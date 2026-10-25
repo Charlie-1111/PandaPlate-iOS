@@ -1,0 +1,444 @@
+import SwiftUI
+import PhotosUI
+import UIKit
+
+struct FoodScanSheet: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var quota = ScanQuotaStore.shared
+    @ObservedObject private var premium = PremiumAccess.shared
+
+    @State private var selectedLibraryItem: PhotosPickerItem?
+    @State private var previewImage: UIImage?
+    @State private var imageData: Data?
+    @State private var consented = false
+    @State private var isScanning = false
+    @State private var scanError: String?
+    @State private var showPaywall = false
+    @State private var showCamera = false
+    @State private var resultCandidate: FoodScanCandidate?
+    @State private var resultNotice: String?
+    @State private var editName = ""
+    @State private var editPortion = ""
+    @State private var editCalories = ""
+    @State private var mealType = "Lunch"
+    @State private var photoLoadTask: Task<Void, Never>?
+    @State private var showCelebrate = false
+    @State private var celebrateScale: CGFloat = 0.86
+    @State private var celebrateOpacity: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"]
+
+    private var parsedCalories: Int? {
+        let value = editCalories.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, let number = Int(value), (0...10_000).contains(number) else { return nil }
+        return number
+    }
+
+    private var caloriesAreValid: Bool {
+        let value = editCalories.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty || parsedCalories != nil
+    }
+
+    private var canSaveResult: Bool {
+        let name = editName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !name.isEmpty && name.count <= 120 && caloriesAreValid && store.meals.count < AppStore.maximumMealsPerSession
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Group {
+                    if resultCandidate != nil {
+                        resultEditor
+                    } else {
+                        captureStep
+                    }
+                }
+                .background(PPColor.cream.ignoresSafeArea())
+                .navigationTitle("Food Scan")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }.tint(PPColor.coralInk)
+                    }
+                }
+                .disabled(showCelebrate)
+                .opacity(showCelebrate ? 0.35 : 1)
+
+                if showCelebrate {
+                    celebrateOverlay
+                        .transition(.opacity)
+                        .zIndex(2)
+                }
+            }
+            .sheet(isPresented: $showPaywall) {
+                PremiumPaywallView()
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPhotoPicker(
+                    onCapture: { image in
+                        showCamera = false
+                        applyCapturedImage(image)
+                    },
+                    onCancel: { showCamera = false }
+                )
+                .ignoresSafeArea()
+            }
+            .onDisappear { photoLoadTask?.cancel() }
+        }
+    }
+
+    private var cheerPhrase: String {
+        let name = store.companionName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pip = name.isEmpty ? "Pip" : name
+        return "\(pip) saw that — nice log."
+    }
+
+    private var celebrateOverlay: some View {
+        VStack(spacing: 14) {
+            PipMascot(size: 140, assetName: "PP_PipCelebrate")
+                .scaleEffect(celebrateScale)
+                .opacity(celebrateOpacity)
+                .accessibilityLabel("Pip celebrates your log")
+            Text(cheerPhrase)
+                .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .headline))
+                .foregroundStyle(PPColor.ink)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+                .opacity(celebrateOpacity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PPColor.cream.opacity(0.96).ignoresSafeArea())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(cheerPhrase)
+    }
+
+    private var captureStep: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Camera or library → Pip helps identify → you edit & save.")
+                    .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .body))
+                    .foregroundStyle(PPColor.muted)
+
+                Text(quota.quotaSummaryLine)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.ink)
+
+                if let previewImage {
+                    Image(uiImage: previewImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 220)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .accessibilityLabel("Selected meal photo for scan")
+                }
+
+                HStack(spacing: 10) {
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Label("Camera", systemImage: "camera.fill")
+                                .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                                .background(PPColor.coralInk, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    PhotosPicker(selection: $selectedLibraryItem, matching: .images, photoLibrary: .shared()) {
+                        Label(previewImage == nil ? "Library" : "Change", systemImage: "photo.on.rectangle")
+                            .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                            .foregroundStyle(PPColor.coralInk)
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .background(PPColor.peach, in: Capsule())
+                    }
+                    .onChange(of: selectedLibraryItem) { _, item in
+                        loadLibraryPhoto(item)
+                    }
+                }
+
+                Toggle(isOn: $consented) {
+                    Text("Send this photo to the local PandaPlate Server for recognition. Photo isn’t stored on our servers beyond this request.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                        .foregroundStyle(PPColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .tint(PPColor.coral)
+
+                if let scanError {
+                    Text(scanError)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                        .foregroundStyle(PPColor.coralInk)
+                }
+
+                if isScanning {
+                    HStack(spacing: 12) {
+                        ProgressView()
+                        Text("Scanning with DeepSeek vision + USDA FoodData Central…")
+                            .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.muted)
+                    }
+                }
+
+                Button {
+                    startScan()
+                } label: {
+                    Text(isScanning ? "Scanning…" : "Scan food")
+                        .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .headline))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .background(canTapScan ? PPColor.coralInk : PPColor.muted.opacity(0.45), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canTapScan)
+
+                if !premium.isPremium {
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        Text("Need more scans? Unlock Premium")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.coralInk)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Text("Manual entry stays available from Quick log if you’d rather type.")
+                    .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    .foregroundStyle(PPColor.muted)
+            }
+            .padding(20)
+        }
+    }
+
+    private var canTapScan: Bool {
+        previewImage != nil && consented && !isScanning
+    }
+
+    private var resultEditor: some View {
+        Form {
+            Section("Scan result · edit before saving") {
+                if let previewImage {
+                    Image(uiImage: previewImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxHeight: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .listRowBackground(Color.clear)
+                }
+                TextField("Food name", text: $editName)
+                TextField("Portion, optional", text: $editPortion)
+                HStack {
+                    Text("Calories")
+                    Spacer()
+                    TextField("Unknown", text: $editCalories)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 110)
+                }
+                if !caloriesAreValid {
+                    Text("Enter a whole number from 0 to 10,000, or leave blank for unknown.")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.coralInk)
+                }
+                Text("Blank calories stay unknown and aren’t counted as zero.")
+                    .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    .foregroundStyle(PPColor.muted)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(mealTypes, id: \.self) { type in
+                            let selected = mealType == type
+                            Button { mealType = type } label: {
+                                Text(type)
+                                    .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
+                                    .foregroundStyle(selected ? .white : PPColor.ink)
+                                    .padding(.horizontal, 12)
+                                    .frame(minHeight: 36)
+                                    .background(selected ? PPColor.coralInk : PPColor.peach, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                if let source = resultCandidate?.nutritionSource, !source.isEmpty {
+                    Text("Source: \(source)")
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.muted)
+                }
+                if let notice = resultNotice, !notice.isEmpty {
+                    Text(notice)
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.muted)
+                }
+                if let notes = resultCandidate?.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.muted)
+                }
+            }
+
+            Section {
+                Button("Save meal") {
+                    saveResult()
+                }
+                .fontWeight(.bold)
+                .disabled(!canSaveResult)
+                .tint(PPColor.coralInk)
+
+                Button("Scan again") {
+                    resultCandidate = nil
+                    resultNotice = nil
+                    scanError = nil
+                    consented = false
+                }
+                .tint(PPColor.coralInk)
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .tint(PPColor.coralInk)
+    }
+
+    private func startScan() {
+        scanError = nil
+        guard let image = previewImage else { return }
+        guard consented else {
+            scanError = FoodScanClient.userMessage(forServerCode: "explicit_live_consent_required", fallback: nil)
+            return
+        }
+        guard quota.canStartLiveScan(isPremium: premium.isPremium) else {
+            showPaywall = true
+            scanError = "You’ve used today’s 3 free Food Scans. Unlock Premium for unlimited scans, or try again tomorrow."
+            return
+        }
+
+        isScanning = true
+        Task {
+            do {
+                let response = try await FoodScanClient.scan(image: image, consent: true)
+                await MainActor.run {
+                    isScanning = false
+                    applyScanResponse(response)
+                    quota.recordSuccessfulLiveScan()
+                }
+            } catch {
+                await MainActor.run {
+                    isScanning = false
+                    resultCandidate = nil
+                    scanError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func applyScanResponse(_ response: FoodScanResponse) {
+        resultCandidate = response.candidate
+        resultNotice = response.notice
+        editName = response.candidate.foodDescription
+        editPortion = response.candidate.portion ?? ""
+        if let calories = response.candidate.calories {
+            editCalories = String(calories)
+        } else {
+            editCalories = ""
+        }
+    }
+
+    private func saveResult() {
+        guard canSaveResult, !showCelebrate else { return }
+        let food = editName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let portion = editPortion.trimmingCharacters(in: .whitespacesAndNewlines)
+        var parts = [mealType, food]
+        if !portion.isEmpty { parts.append(portion) }
+        let name = parts.joined(separator: " · ")
+        let caloriesValue: Int? = editCalories.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : parsedCalories
+        store.addMeal(name: name, calories: caloriesValue, imageData: imageData)
+        playCelebrateThenDismiss()
+    }
+
+    private func playCelebrateThenDismiss() {
+        showCelebrate = true
+        celebrateScale = reduceMotion ? 1 : 0.86
+        celebrateOpacity = 0
+        let hold: Double = reduceMotion ? 0.85 : 1.15
+        if reduceMotion {
+            celebrateOpacity = 1
+            celebrateScale = 1
+            Task {
+                try? await Task.sleep(for: .seconds(hold))
+                await MainActor.run { dismiss() }
+            }
+        } else {
+            withAnimation(.easeOut(duration: 0.35)) {
+                celebrateOpacity = 1
+                celebrateScale = 1.06
+            }
+            Task {
+                try? await Task.sleep(for: .milliseconds(380))
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        celebrateScale = 1.0
+                    }
+                }
+                try? await Task.sleep(for: .seconds(hold - 0.38))
+                await MainActor.run { dismiss() }
+            }
+        }
+    }
+
+    private func applyCapturedImage(_ image: UIImage) {
+        guard let raw = image.jpegData(compressionQuality: 0.85) else {
+            scanError = "Couldn’t prepare that camera photo safely."
+            return
+        }
+        guard let reduced = BoundedPhotoLoader.jpegData(from: raw) ?? (raw.count <= 1_000_000 ? raw : nil),
+              reduced.count <= 1_000_000,
+              let ui = UIImage(data: reduced) else {
+            scanError = "Couldn’t prepare that camera photo safely."
+            return
+        }
+        previewImage = ui
+        imageData = reduced
+        resultCandidate = nil
+        scanError = nil
+    }
+
+    private func loadLibraryPhoto(_ item: PhotosPickerItem?) {
+        photoLoadTask?.cancel()
+        guard let item else { return }
+        let id = UUID()
+        isScanning = false
+        scanError = nil
+        photoLoadTask = Task {
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self) else {
+                    await MainActor.run { scanError = "Couldn’t load that photo." }
+                    return
+                }
+                guard data.count <= 12_000_000 else {
+                    await MainActor.run { scanError = "That photo is too large. Choose one under 12 MB." }
+                    return
+                }
+                guard let reduced = BoundedPhotoLoader.jpegData(from: data), reduced.count <= 1_000_000,
+                      let ui = UIImage(data: reduced) else {
+                    await MainActor.run { scanError = "Couldn’t prepare that photo safely." }
+                    return
+                }
+                await MainActor.run {
+                    guard !Task.isCancelled else { return }
+                    previewImage = ui
+                    imageData = reduced
+                    resultCandidate = nil
+                    _ = id
+                }
+            } catch {
+                await MainActor.run { scanError = "Couldn’t load that photo. Try another." }
+            }
+        }
+    }
+}

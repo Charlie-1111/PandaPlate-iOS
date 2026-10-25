@@ -1,0 +1,409 @@
+// FoodScanSheet.swift.sketch — §03 Snap.Check.Log camera-first chrome
+// LAND: merge into Sources/.../FoodScanSheet.swift on Mac. Do NOT blind-overwrite
+// without diffing live consent / quota / client / cheer hooks.
+//
+// HONESTY LOCKS (Clear) — preserve verbatim behavior:
+// 1. Consent every scan (UI gate + payload "consent": true); scan-again resets.
+// 2. FoodScanClient → Server proxy only; no DeepSeek key in app.
+// 3. Never invent nutrition; unknown calories stay nil / blank (not 0).
+// 4. Analyzing = Pip Thinking / soft progress ONLY — never fake macros mid-spin.
+// 5. AI estimate badge ONLY when server returned real values.
+// 6. Free 3/day (ScanQuotaStore) + Premium paywall (PremiumAccess) unchanged.
+// 7. Save → existing Pip cheer path (PASS); Reduce Motion → static assets.
+//
+// Cosmetics / Little World 1+6: PAUSED — do not wire here.
+//
+// PPColor.* placeholders match landed PandaPlate (cream/coral). Confirm names on Mac.
+
+import SwiftUI
+import PhotosUI
+#if canImport(AVFoundation)
+import AVFoundation
+#endif
+
+// MARK: - Sheet
+
+struct FoodScanSheet: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // KEEP: existing injected / observed types on Mac — names may differ slightly; align on land.
+    @StateObject private var quota = ScanQuotaStore.shared // or whatever live pattern is
+    // Prefer existing PremiumAccess / paywall presentation from current sheet.
+
+    private enum Step: Equatable {
+        case camera          // §03 “Snap your meal”
+        case consentGate     // Clear: fold over camera without killing camera feel
+        case analyzing       // Pip Thinking — NO macros
+        case result          // “Looks delicious.”
+        case cheer           // existing Pip celebrate beat (PASS)
+    }
+
+    private enum CaptureMode: String, CaseIterable, Identifiable {
+        case photo = "Photo"
+        case search = "Search"     // layout stub OK
+        case barcode = "Barcode"   // layout stub OK
+        var id: String { rawValue }
+    }
+
+    @State private var step: Step = .camera
+    @State private var captureMode: CaptureMode = .photo
+    @State private var consentAccepted = false
+    @State private var showConsentOverlay = false
+    @State private var isScanning = false
+    @State private var errorMessage: String?
+    @State private var showPaywall = false
+
+    // Captured image (camera shutter OR PhotosPicker) — feed to FoodScanClient as today.
+    @State private var pickedItem: PhotosPickerItem?
+    @State private var capturedJPEG: Data?
+    @State private var previewImage: UIImage?
+
+    // Result editor — KEEP nil semantics from live sheet.
+    @State private var dishName: String = ""
+    @State private var portionLabel: String = "1 serving"
+    @State private var mealSlot: String = "Lunch"
+    @State private var caloriesText: String = ""          // blank when nil — NEVER invent "0"
+    @State private var proteinText: String = ""
+    @State private var carbsText: String = ""
+    @State private var fatText: String = ""
+    @State private var ingredients: [EditableIngredient] = []
+    @State private var hasServerNutrition: Bool = false   // gates AI badge
+    @State private var candidate: FoodScanCandidate?      // use live type name on Mac
+
+    var body: some View {
+        ZStack {
+            PPColor.cream.ignoresSafeArea()
+
+            switch step {
+            case .camera, .consentGate:
+                cameraPhase
+                    .overlay {
+                        if showConsentOverlay || step == .consentGate {
+                            consentOverlay
+                                .transition(.opacity)
+                        }
+                    }
+            case .analyzing:
+                ScanAnalyzingBeat(reduceMotion: reduceMotion)
+            case .result:
+                ScanResultCard(
+                    previewImage: previewImage,
+                    dishName: $dishName,
+                    portionLabel: $portionLabel,
+                    mealSlot: $mealSlot,
+                    caloriesText: $caloriesText,
+                    proteinText: $proteinText,
+                    carbsText: $carbsText,
+                    fatText: $fatText,
+                    ingredients: $ingredients,
+                    hasServerNutrition: hasServerNutrition,
+                    onBack: { resetToCamera(clearConsent: false) },
+                    onSave: saveToLog
+                )
+            case .cheer:
+                // KEEP existing cheer view / PipReactionBeat path from live sheet.
+                cheerPhase
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: step)
+        .sheet(isPresented: $showPaywall) {
+            // KEEP existing PremiumAccess paywall presentation.
+            Text("Premium paywall — wire to live PremiumAccess UI")
+        }
+        .onChange(of: pickedItem) { _, newItem in
+            Task { await loadPickedPhoto(newItem) }
+        }
+    }
+
+    // MARK: - Camera phase (§03 middle screen)
+
+    private var cameraPhase: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(PPColor.ink)
+                        .frame(width: 40, height: 40)
+                        .background(PPColor.card, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+
+                Spacer()
+                Text("Snap your meal")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(PPColor.ink)
+                Spacer()
+                Color.clear.frame(width: 40, height: 40)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+
+            Spacer(minLength: 12)
+
+            ScanCameraChrome(
+                previewImage: previewImage,
+                guideText: "Keep the whole plate in view.",
+                mode: $captureMode,
+                onShutter: handleShutterTap,
+                photosPickerItem: $pickedItem
+            )
+            .padding(.horizontal, 16)
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(PPColor.coralInk)
+                    .padding(.top, 8)
+                    .padding(.horizontal, 20)
+            }
+
+            Text("You can review everything before saving.")
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(PPColor.muted)
+                .padding(.top, 14)
+                .padding(.bottom, 20)
+        }
+    }
+
+    // MARK: - Consent (Clear — every scan; fold into pre-shutter)
+
+    private var consentOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.35).ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Before we look at your plate")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(PPColor.ink)
+                Text("Photo is sent to the PandaPlate Server for a live estimate. Unknown values stay blank — we never invent nutrition. Key stays on the Server.")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(PPColor.muted)
+
+                Toggle(isOn: $consentAccepted) {
+                    Text("I understand and agree for this scan")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PPColor.ink)
+                }
+                .tint(PPColor.coralInk)
+
+                Button(action: confirmConsentAndScan) {
+                    Text("Continue")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .background(
+                            consentAccepted ? PPColor.coralInk : PPColor.coralInk.opacity(0.4),
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(!consentAccepted)
+
+                Button("Not now") {
+                    showConsentOverlay = false
+                    step = .camera
+                    consentAccepted = false
+                }
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(PPColor.muted)
+                .frame(maxWidth: .infinity)
+            }
+            .padding(20)
+            .background(PPColor.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(24)
+        }
+    }
+
+    // MARK: - Cheer (KEEP live implementation)
+
+    private var cheerPhase: some View {
+        VStack(spacing: 16) {
+            if reduceMotion {
+                Image("PP_PipCelebrate")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 180, height: 180)
+            } else {
+                // Prefer existing PipReactionBeat if present on Mac:
+                Image("PP_PipCelebrate")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 180, height: 180)
+            }
+            Text("Logged — nice one.")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(PPColor.ink)
+            Button("Done") { dismiss() }
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(PPColor.coralInk, in: Capsule())
+                .padding(.horizontal, 24)
+        }
+        .onAppear {
+            // Auto-dismiss timing: match live sheet if it already has one.
+        }
+    }
+
+    // MARK: - Actions
+
+    private func handleShutterTap() {
+        errorMessage = nil
+        guard captureMode == .photo else {
+            // Search / Barcode: layout visible, behavior stub
+            errorMessage = captureMode == .search
+                ? "Search is coming — use Photo for now."
+                : "Barcode is coming — use Photo for now."
+            return
+        }
+        // If no frame yet, PhotosPicker is secondary; shutter may also trigger capture when live camera lands.
+        if capturedJPEG == nil && previewImage == nil {
+            // Soft nudge: user can tap gallery (PhotosPicker) — camera AVCaptureSession is Mac follow-up if not already present.
+            errorMessage = "Pick a photo or enable camera to snap."
+            return
+        }
+        beginConsentThenScan()
+    }
+
+    private func beginConsentThenScan() {
+        // HONESTY: consent every scan — never skip, never persist as forever-on across scans.
+        consentAccepted = false
+        showConsentOverlay = true
+        step = .consentGate
+    }
+
+    private func confirmConsentAndScan() {
+        guard consentAccepted else { return }
+        showConsentOverlay = false
+        Task { await runScan() }
+    }
+
+    @MainActor
+    private func runScan() async {
+        // HONESTY: quota before network
+        guard quota.canScan(isPremium: /* PremiumAccess.current */ false) else {
+            showPaywall = true
+            step = .camera
+            return
+        }
+
+        guard let data = capturedJPEG else {
+            errorMessage = "No photo to scan."
+            step = .camera
+            return
+        }
+
+        isScanning = true
+        step = .analyzing
+        errorMessage = nil
+        hasServerNutrition = false
+        // HONESTY: clear any previous candidate so mid-spin UI cannot show stale/fake macros
+        candidate = nil
+        caloriesText = ""
+        proteinText = ""
+        carbsText = ""
+        fatText = ""
+        ingredients = []
+
+        do {
+            // KEEP live FoodScanClient API shape — adjust parameter names on land.
+            let result = try await FoodScanClient.shared.scan(
+                imageJPEG: data,
+                consent: true // required; Server rejects non-true
+            )
+            applyServerResult(result)
+            quota.recordScan() // keep live quota accounting
+            step = .result
+        } catch {
+            // HONESTY: failures clear candidate — do not invent
+            candidate = nil
+            hasServerNutrition = false
+            errorMessage = error.localizedDescription
+            step = .camera
+        }
+        isScanning = false
+    }
+
+    private func applyServerResult(_ result: FoodScanCandidate) {
+        // Align property names with live FoodScanCandidate / response DTO on Mac.
+        candidate = result
+        dishName = result.name // or .dishName
+        // Calories: nil → blank string. NEVER coerce nil to "0".
+        if let kcal = result.calories {
+            caloriesText = String(kcal)
+            hasServerNutrition = true
+        } else {
+            caloriesText = ""
+        }
+        if let p = result.proteinGrams { proteinText = String(p); hasServerNutrition = true } else { proteinText = "" }
+        if let c = result.carbsGrams { carbsText = String(c); hasServerNutrition = true } else { carbsText = "" }
+        if let f = result.fatGrams { fatText = String(f); hasServerNutrition = true } else { fatText = "" }
+        ingredients = (result.ingredients ?? []).map {
+            EditableIngredient(name: $0.name, gramsLabel: $0.grams.map { "\($0)g" } ?? "")
+        }
+        // If server returns a flag like result.isEstimate / result.hasNutrition — prefer that for badge.
+    }
+
+    private func saveToLog() {
+        // KEEP live save path into AppStore / meal log.
+        // Parse caloriesText: empty → nil (not 0).
+        let kcal: Int? = Int(caloriesText.trimmingCharacters(in: .whitespacesAndNewlines))
+        // store.addMeal(... calories: kcal, ...)
+        _ = kcal
+        step = .cheer
+    }
+
+    private func resetToCamera(clearConsent: Bool) {
+        if clearConsent { consentAccepted = false }
+        showConsentOverlay = false
+        step = .camera
+        // Scan-again path should call resetToCamera(clearConsent: true) — honesty audit.
+    }
+
+    private func loadPickedPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        do {
+            if let data = try await item.loadTransferable(type: Data.self) {
+                await MainActor.run {
+                    capturedJPEG = data
+                    previewImage = UIImage(data: data)
+                    errorMessage = nil
+                }
+            }
+        } catch {
+            await MainActor.run { errorMessage = "Couldn’t load that photo." }
+        }
+    }
+}
+
+// MARK: - Local editor model (replace with live ingredient type if present)
+
+struct EditableIngredient: Identifiable, Equatable {
+    let id = UUID()
+    var name: String
+    var gramsLabel: String
+}
+
+// MARK: - Placeholder types for sketch compile-readability
+// DELETE on land — use real FoodScanCandidate / FoodScanClient / ScanQuotaStore from repo.
+
+#if DEBUG && false
+struct FoodScanCandidate {
+    var name: String
+    var calories: Int?
+    var proteinGrams: Double?
+    var carbsGrams: Double?
+    var fatGrams: Double?
+    var ingredients: [Ingredient]?
+    struct Ingredient { var name: String; var grams: Int? }
+}
+enum FoodScanClient {
+    static let shared = FoodScanClient()
+    func scan(imageJPEG: Data, consent: Bool) async throws -> FoodScanCandidate {
+        fatalError("sketch only")
+    }
+}
+#endif

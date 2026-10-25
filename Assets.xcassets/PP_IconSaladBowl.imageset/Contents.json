@@ -1,0 +1,23 @@
+{
+  "images": [
+    {
+      "filename": "PP_IconSaladBowl@1x.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "PP_IconSaladBowl@2x.png",
+      "idiom": "universal",
+      "scale": "2x"
+    },
+    {
+      "filename": "PP_IconSaladBowl@3x.png",
+      "idiom": "universal",
+      "scale": "3x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

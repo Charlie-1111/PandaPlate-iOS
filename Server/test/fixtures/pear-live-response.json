@@ -1,0 +1,27 @@
+{
+  "mode": "live",
+  "candidate": {
+    "foodDescription": "fresh green pear slices",
+    "portion": "about 1 medium pear / 170 g",
+    "grams": 170,
+    "confidence": 0.85,
+    "notes": "The image cannot establish exact weight or calories.",
+    "calories": 97,
+    "fdcMatches": [
+      {
+        "fdcId": 169118,
+        "description": "Pears, raw",
+        "dataType": "Foundation",
+        "nutrientsPer100g": {
+          "caloriesKcal": 57,
+          "proteinG": 0.36,
+          "fatG": 0.14,
+          "carbohydrateG": 15.23,
+          "fiberG": 3.1
+        }
+      }
+    ],
+    "nutritionSource": "USDA FoodData Central"
+  },
+  "notice": "Visual identification and portion are estimates. Calories are calculated from a USDA FoodData Central candidate; edit before saving."
+}

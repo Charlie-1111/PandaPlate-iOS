@@ -1,0 +1,98 @@
+name: PandaPlate
+options:
+  bundleIdPrefix: com.charlie
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: "9.0.0"
+targets:
+  PandaPlate:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+      - path: Assets.xcassets
+        buildPhase: resources
+      - path: Resources/red_panda_welcome_animation.mp4
+        buildPhase: resources
+      - path: Resources/pip_peek_swipe.gif
+        buildPhase: resources
+      - path: Resources/PipLife
+        buildPhase: resources
+        type: folder
+    info:
+      path: Info.plist
+      properties:
+        UIViewControllerBasedStatusBarAppearance: true
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: PandaPlate uses the camera when you open Food Scan so you can take one still photo of your meal to log. You can also choose a photo from your library.
+        NSHealthShareUsageDescription: PandaPlate reads steps, active energy, exercise time, and workouts from Apple Health only when you choose Connect — to show today’s movement and optionally log workouts. We don’t write to Health in this version.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        # Google Sign-In — paste real iOS OAuth Client ID from Google Cloud Console
+        # (bundle com.charlie.pandaplate). Also set CFBundleURLSchemes to the
+        # reversed client id (com.googleusercontent.apps.<prefix>).
+        GIDClientID: 779403414286-37gn54tsa14ajbnequtq6kk54hkhsni3.apps.googleusercontent.com
+        CFBundleURLTypes:
+          - CFBundleURLName: GoogleSignIn
+            CFBundleTypeRole: Editor
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.779403414286-37gn54tsa14ajbnequtq6kk54hkhsni3
+    entitlements:
+      path: PandaPlate.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    dependencies:
+      - sdk: HealthKit.framework
+      - package: GoogleSignIn
+        product: GoogleSignIn
+      - package: GoogleSignIn
+        product: GoogleSignInSwift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.charlie.pandaplate
+        PRODUCT_NAME: PandaPlate
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_CFBundleDisplayName: PandaPlate
+        INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+  PandaPlateUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: PandaPlate
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.charlie.pandaplate.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+  PandaPlateTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests
+    dependencies:
+      - target: PandaPlate
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.charlie.pandaplate.tests
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+schemes:
+  PandaPlate:
+    build:
+      targets:
+        PandaPlate: all
+    test:
+      targets:
+        - PandaPlateTests
+        - PandaPlateUITests

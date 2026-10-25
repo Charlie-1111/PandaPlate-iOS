@@ -1,0 +1,231 @@
+// WeekLogExport.swift.sketch — Premium Harvest session CSV + share sheet
+// LAND: add as Sources/.../WeekLogExport.swift after scan UI §03 polish.
+// Align LogEntry / AppStore field names with live Mac types — placeholders annotated.
+//
+// HONESTY LOCKS (Clear) — preserve verbatim:
+// 1. Session-only label — never imply full history / cloud backup.
+// 2. CSV columns ONLY: type,time,name_or_activity,portion_or_duration,calories_or_blank,notes
+// 3. Blank / nil calories → empty field — NEVER invent "0".
+// 4. No BMI / deficit / goal / caloriesRemaining columns.
+// 5. Premium-gated; Free → existing paywall (PremiumAccess).
+// 6. Filename: PandaPlate-session-YYYYMMDD.csv
+// 7. Share via UIActivityViewController (temp file).
+//
+// Cosmetics / Little World 1+6: PAUSED — do not wire here.
+
+import SwiftUI
+import UIKit
+
+// MARK: - Public API
+
+enum WeekLogExport {
+    /// Locked CSV header — do not extend without Clear re-gate.
+    static let csvHeader = "type,time,name_or_activity,portion_or_duration,calories_or_blank,notes"
+
+    /// Session-only UI copy for buttons / sheets.
+    static let sessionOnlyLabel = "Export this session"
+    static let sessionOnlyFootnote = "Exports today’s session log as CSV. Not a full history backup."
+
+    // MARK: Build
+
+    /// Build CSV string from current-session log rows.
+    /// - Parameter entries: map from live AppStore meal + workout entries for *this session only*.
+    static func buildCSV(entries: [ExportableLogRow]) -> String {
+        var lines: [String] = [csvHeader]
+        for row in entries {
+            lines.append(row.csvLine)
+        }
+        // Trailing newline helps spreadsheet apps.
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    /// Filename: PandaPlate-session-YYYYMMDD.csv (local calendar day).
+    static func filename(for date: Date = Date(), calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        let y = parts.year ?? 0
+        let m = parts.month ?? 0
+        let d = parts.day ?? 0
+        return String(format: "PandaPlate-session-%04d%02d%02d.csv", y, m, d)
+    }
+
+    /// Write CSV to a temp file and return its URL.
+    static func writeTempFile(csv: String, date: Date = Date()) throws -> URL {
+        let name = filename(for: date)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        // Atomic write; UTF-8. No BOM required for honesty; Excel may prefer BOM — optional later, not invent.
+        try csv.data(using: .utf8)?.write(to: url, options: .atomic)
+        return url
+    }
+
+    // MARK: Share
+
+    /// Present UIActivityViewController with the session CSV.
+    /// Call from a SwiftUI button after Premium gate passes.
+    @MainActor
+    static func presentShareSheet(entries: [ExportableLogRow], from presenter: UIViewController? = nil) throws {
+        let csv = buildCSV(entries: entries)
+        let url = try writeTempFile(csv: csv)
+        let vc = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        // iPad popover anchor — use presenter view if available.
+        if let pop = vc.popoverPresentationController, let host = presenter {
+            pop.sourceView = host.view
+            pop.sourceRect = CGRect(x: host.view.bounds.midX, y: host.view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = []
+        }
+        let host = presenter ?? topViewController()
+        host?.present(vc, animated: true)
+    }
+
+    /// Best-effort root VC lookup for SwiftUI call sites without an explicit presenter.
+    @MainActor
+    private static func topViewController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? scenes.first?.windows.first
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController { top = presented }
+        return top
+    }
+}
+
+// MARK: - Row model (map from live AppStore types on land)
+
+/// Neutral export row — map meals / workouts into this; do not pass AppStore BMI/goal fields through.
+struct ExportableLogRow: Equatable {
+    enum Kind: String {
+        case meal
+        case workout
+        // Extend only with Clear OK — keep CSV `type` honest to what was logged.
+    }
+
+    var type: Kind
+    var time: Date
+    var nameOrActivity: String
+    var portionOrDuration: String
+    /// HONESTY: nil → blank CSV cell. Never coerce to 0.
+    var calories: Int?
+    var notes: String
+
+    /// ISO8601-ish local stamp — align with live log display if a formatter already exists.
+    private static let timeFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        // If fractional seconds cause noise on land, drop `.withFractionalSeconds`.
+        return f
+    }()
+
+    private static let timeFallback: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        f.timeZone = .current
+        return f
+    }()
+
+    var csvLine: String {
+        let timeString = Self.timeFormatter.string(from: time)
+        // Fallback if ISO8601 fails oddly — still session-honest.
+        let t = timeString.isEmpty ? Self.timeFallback.string(from: time) : timeString
+        let kcalField: String
+        if let calories {
+            kcalField = String(calories)
+        } else {
+            kcalField = "" // blank — unknown ≠ 0
+        }
+        return [
+            csvEscape(type.rawValue),
+            csvEscape(t),
+            csvEscape(nameOrActivity),
+            csvEscape(portionOrDuration),
+            csvEscape(kcalField),
+            csvEscape(notes)
+        ].joined(separator: ",")
+    }
+
+    /// RFC-ish CSV escape: quote if needed; double internal quotes.
+    private func csvEscape(_ raw: String) -> String {
+        if raw.contains(",") || raw.contains("\"") || raw.contains("\n") || raw.contains("\r") {
+            return "\"" + raw.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+        }
+        return raw
+    }
+}
+
+// MARK: - SwiftUI entry (wire into Settings / history chrome)
+
+/// Drop-in Premium-gated export control. Align `isPremium` + paywall with live PremiumAccess.
+struct SessionCSVExportButton: View {
+    /// Map from AppStore current-session meals + workouts on land.
+    let entries: [ExportableLogRow]
+    let isPremium: Bool
+    var onFreeTap: () -> Void          // present existing paywall
+    var onError: ((String) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                guard isPremium else {
+                    onFreeTap()
+                    return
+                }
+                do {
+                    try WeekLogExport.presentShareSheet(entries: entries)
+                } catch {
+                    onError?(error.localizedDescription)
+                }
+            } label: {
+                Label(WeekLogExport.sessionOnlyLabel, systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            // KEEP PPColor / coral chrome tokens from live app if available.
+
+            Text(WeekLogExport.sessionOnlyFootnote)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(WeekLogExport.sessionOnlyFootnote)
+        }
+    }
+}
+
+// MARK: - Mapping helpers (DELETE shapes once live types wired)
+
+extension WeekLogExport {
+    /// Example mapper — replace `AnyMeal` / `AnyWorkout` with live AppStore entry types.
+    /// HONESTY: only pass fields that exist; calories stay Optional.
+    static func rows(
+        meals: [(date: Date, name: String, portion: String, calories: Int?, notes: String)],
+        workouts: [(date: Date, activity: String, duration: String, calories: Int?, notes: String)]
+    ) -> [ExportableLogRow] {
+        let mealRows = meals.map {
+            ExportableLogRow(
+                type: .meal,
+                time: $0.date,
+                nameOrActivity: $0.name,
+                portionOrDuration: $0.portion,
+                calories: $0.calories, // keep nil
+                notes: $0.notes
+            )
+        }
+        let workoutRows = workouts.map {
+            ExportableLogRow(
+                type: .workout,
+                time: $0.date,
+                nameOrActivity: $0.activity,
+                portionOrDuration: $0.duration,
+                calories: $0.calories, // workouts: no invent burn — nil OK / existing honest values only
+                notes: $0.notes
+            )
+        }
+        return (mealRows + workoutRows).sorted { $0.time < $1.time }
+    }
+}
+
+/*
+ LAND CHECKLIST (inline):
+ - [ ] Wire SessionCSVExportButton into Settings or Soft Show-Up / log chrome
+ - [ ] isPremium ← PremiumAccess (local unlock OK until StoreKit)
+ - [ ] onFreeTap ← existing paywall presentation
+ - [ ] entries ← AppStore session meals + workouts ONLY (not residual dailyGoal)
+ - [ ] Confirm CSV has exactly 6 columns; spot-check a nil-kcal meal → empty field
+ - [ ] Share sheet appears; filename matches PandaPlate-session-YYYYMMDD.csv
+ */

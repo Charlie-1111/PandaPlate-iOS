@@ -1,0 +1,280 @@
+// USDAFavoritesStore.swift.sketch — Premium Harvest pin USDA favorites
+// LAND: add as Sources/.../USDAFavoritesStore.swift after scan UI §03 polish.
+//
+// HONESTY LOCKS (Clear) — preserve verbatim:
+// 1. Pin NEVER invents nutrition — store only {fdcId, description, lastCalories?}.
+// 2. lastCalories only when already known (server / prior user edit); never default 0.
+// 3. Consent STILL required on every scan — picking a favorite does not skip consent.
+// 4. Free → paywall; Premium local unlock OK until StoreKit.
+// 5. Cap ~20; dedupe by fdcId (re-pin moves to front).
+// 6. No DeepSeek / API key; fdcId is a USDA FoodData Central catalog ref only.
+//
+// Cosmetics / Little World 1+6: PAUSED — do not wire here.
+
+import Foundation
+import Combine
+import SwiftUI
+
+// MARK: - Model
+
+struct PinnedUSDAFavorite: Codable, Equatable, Identifiable {
+    /// USDA FoodData Central id — stable pin key.
+    var fdcId: Int
+    /// Human description from FDC / search result (as returned — do not rewrite into macros).
+    var description: String
+    /// Optional last-known calories from a prior honest source. nil = unknown (UI blank).
+    var lastCalories: Int?
+
+    var id: Int { fdcId }
+}
+
+// MARK: - Store
+
+@MainActor
+final class USDAFavoritesStore: ObservableObject {
+    static let shared = USDAFavoritesStore()
+
+    /// UserDefaults key — confirm no collision on Mac (`rg 'pp\\.'` for existing keys).
+    static let defaultsKey = "pp.usda.favorites"
+    /// Soft cap — ~20; oldest (end of array) dropped on overflow after insert-at-front.
+    static let cap = 20
+
+    @Published private(set) var favorites: [PinnedUSDAFavorite] = []
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        reload()
+    }
+
+    func reload() {
+        guard let data = defaults.data(forKey: Self.defaultsKey) else {
+            favorites = []
+            return
+        }
+        do {
+            let decoded = try JSONDecoder().decode([PinnedUSDAFavorite].self, from: data)
+            // Defensive: drop any corrupt invent-y zeros? No — 0 can be a real FDC value.
+            // Only reject negative / nonsense if Clear asks later. Keep as stored.
+            favorites = Array(decoded.prefix(Self.cap))
+        } catch {
+            favorites = []
+        }
+    }
+
+    private func persist() {
+        do {
+            let data = try JSONEncoder().encode(favorites)
+            defaults.set(data, forKey: Self.defaultsKey)
+        } catch {
+            // Soft fail — do not crash logging path.
+        }
+    }
+
+    /// Pin or refresh. Dedupe by fdcId; move to front. Cap ~20.
+    /// - Parameters:
+    ///   - fdcId: USDA FDC id (required).
+    ///   - description: Catalog description (required, non-empty after trim).
+    ///   - lastCalories: Pass only a known value; omit / nil if unknown — NEVER invent 0 to “fill”.
+    @discardableResult
+    func pin(fdcId: Int, description: String, lastCalories: Int? = nil) -> Bool {
+        let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard fdcId > 0, !trimmed.isEmpty else { return false }
+
+        // If re-pinning and new lastCalories is nil, keep prior known calories (don’t wipe honesty).
+        let prior = favorites.first { $0.fdcId == fdcId }
+        let caloriesToStore: Int?
+        if let lastCalories {
+            caloriesToStore = lastCalories
+        } else {
+            caloriesToStore = prior?.lastCalories
+        }
+
+        let item = PinnedUSDAFavorite(
+            fdcId: fdcId,
+            description: trimmed,
+            lastCalories: caloriesToStore
+        )
+
+        var next = favorites.filter { $0.fdcId != fdcId }
+        next.insert(item, at: 0)
+        if next.count > Self.cap {
+            next = Array(next.prefix(Self.cap))
+        }
+        favorites = next
+        persist()
+        return true
+    }
+
+    func unpin(fdcId: Int) {
+        favorites.removeAll { $0.fdcId == fdcId }
+        persist()
+    }
+
+    func isPinned(fdcId: Int) -> Bool {
+        favorites.contains { $0.fdcId == fdcId }
+    }
+
+    /// Fill editor fields from a pin — name always; calories only if lastCalories != nil.
+    /// Does NOT start a scan and does NOT set consent.
+    struct EditorPrefill: Equatable {
+        var dishName: String
+        /// nil → leave calories editor blank
+        var calories: Int?
+        var fdcId: Int
+    }
+
+    func prefill(for fdcId: Int) -> EditorPrefill? {
+        guard let fav = favorites.first(where: { $0.fdcId == fdcId }) else { return nil }
+        return EditorPrefill(
+            dishName: fav.description,
+            calories: fav.lastCalories, // may be nil — UI blank
+            fdcId: fav.fdcId
+        )
+    }
+}
+
+// MARK: - Premium-gated pin control
+
+/// Use on a USDA / search result row. Free → paywall; Premium → pin.
+struct PinUSDAFavoriteButton: View {
+    let fdcId: Int
+    let description: String
+    /// Only pass when the row already has honest calories from FDC / server — else nil.
+    var lastCalories: Int? = nil
+    let isPremium: Bool
+    var onFreeTap: () -> Void
+    @ObservedObject var store: USDAFavoritesStore = .shared
+
+    var body: some View {
+        Button {
+            guard isPremium else {
+                onFreeTap()
+                return
+            }
+            if store.isPinned(fdcId: fdcId) {
+                store.unpin(fdcId: fdcId)
+            } else {
+                _ = store.pin(fdcId: fdcId, description: description, lastCalories: lastCalories)
+            }
+        } label: {
+            Image(systemName: store.isPinned(fdcId: fdcId) ? "pin.fill" : "pin")
+                .accessibilityLabel(store.isPinned(fdcId: fdcId) ? "Unpin favorite" : "Pin USDA favorite")
+        }
+        .buttonStyle(.borderless)
+    }
+}
+
+// MARK: - Favorites list (Settings / Search tab surface)
+
+struct USDAFavoritesList: View {
+    @ObservedObject var store: USDAFavoritesStore = .shared
+    /// Called when user picks a favorite to prefill — parent must NOT skip consent on subsequent scan.
+    var onSelect: (USDAFavoritesStore.EditorPrefill) -> Void
+
+    var body: some View {
+        Group {
+            if store.favorites.isEmpty {
+                Text("Pinned USDA foods show up here. Pin from Search when you’re Premium.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+            } else {
+                List {
+                    ForEach(store.favorites) { fav in
+                        Button {
+                            if let pre = store.prefill(for: fav.fdcId) {
+                                onSelect(pre)
+                            }
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(fav.description)
+                                    .foregroundStyle(.primary)
+                                HStack(spacing: 8) {
+                                    Text("FDC \(fav.fdcId)")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                    if let kcal = fav.lastCalories {
+                                        Text("\(kcal) kcal")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        Text("kcal unknown")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                store.unpin(fdcId: fav.fdcId)
+                            } label: {
+                                Label("Unpin", systemImage: "pin.slash")
+                            }
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+    }
+}
+
+// =============================================================================
+// PIN UI NOTES — FoodScanSheet (post–§03 polish)
+// =============================================================================
+//
+// Do NOT blind-edit the §03 sketch; land pin AFTER camera/analyzing/result chrome merges.
+// Exact Step enum / Search stub live in FoodScanSheet — align on Mac.
+//
+// ### Where to wire
+// 1. **Search mode tab** (currently stub in §03 sketch): when Search grows an FDC lookup,
+//    each result row gets `PinUSDAFavoriteButton(fdcId:description:lastCalories:isPremium:onFreeTap:)`.
+//    - `lastCalories` = FDC energy if the row payload includes it; else **omit / nil**.
+//    - Never compute calories client-side from macros invent.
+// 2. **Result card** (optional): if server/scan result includes an `fdcId` (ingredient match),
+//    show a small pin on that row — same button. Still no invent.
+// 3. **Favorites entry point**: Settings or Search chrome hosts `USDAFavoritesList`.
+//    `onSelect` prefills `dishName` + optional caloriesText — then user still taps Scan / Save
+//    through existing honesty paths.
+//
+// ### Consent (Clear — non-negotiable)
+// - Selecting a favorite **prefills only**. It must NOT:
+//   - set `consentAccepted = true`
+//   - call `FoodScanClient.scan` without the consent overlay
+//   - bypass `ScanQuotaStore` / Premium paywall
+// - Flow: pick favorite → (optional) edit fields → if user scans a photo, `beginConsentThenScan()`
+//   as today. If user only saves a manual log from prefill, use existing save path with nil-safe kcal.
+//
+// ### Prefill mapping (into post–§03 FoodScanSheet state)
+// ```
+// if let pre = store.prefill(for: fdcId) {
+//     dishName = pre.dishName
+//     if let kcal = pre.calories {
+//         caloriesText = String(kcal)
+//     } else {
+//         caloriesText = ""          // blank — unknown ≠ 0
+//     }
+//     // Do NOT set hasServerNutrition = true from a pin alone (no AI badge from pin).
+//     // Do NOT invent protein/carbs/fat from pin.
+// }
+// ```
+//
+// ### Premium gate
+// ```
+// PinUSDAFavoriteButton(
+//     fdcId: row.fdcId,
+//     description: row.description,
+//     lastCalories: row.energyKcal,      // Optional — only if FDC returned it
+//     isPremium: PremiumAccess.isPremium, // local unlock OK until StoreKit
+//     onFreeTap: { showPaywall = true }   // existing paywall
+// )
+// ```
+//
+// ### Out of scope this slice
+// - Full USDA search client (Server proxy) — stub Search tab OK until that lands.
+// - StoreKit purchase flow — local Premium unlock disclosed as today.
+// - Cosmetics / Pip reaction packs beyond existing cheer.
+// =============================================================================

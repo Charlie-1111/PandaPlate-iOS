@@ -1,0 +1,153 @@
+// ScanCameraChrome.swift.sketch — §03 viewfinder + mode tabs + coral shutter
+// Optional helper: paste into FoodScanSheet.swift as private struct if skipping new file.
+//
+// HONESTY: chrome only — does not call scan, invent macros, or skip consent.
+
+import SwiftUI
+import PhotosUI
+
+struct ScanCameraChrome: View {
+    let previewImage: UIImage?
+    let guideText: String
+    @Binding var mode: FoodScanSheetMode // on land: use nested CaptureMode or pass generic
+    let onShutter: () -> Void
+    @Binding var photosPickerItem: PhotosPickerItem?
+
+    // Standalone land: replace FoodScanSheetMode with the sheet’s CaptureMode.
+    // For one-file land, make this `private struct` inside FoodScanSheet and use CaptureMode directly.
+
+    var body: some View {
+        VStack(spacing: 16) {
+            viewfinder
+            modeTabs
+            controlsRow
+        }
+    }
+
+    private var viewfinder: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(PPColor.ink.opacity(0.08))
+                .aspectRatio(3/4, contentMode: .fit)
+                .overlay {
+                    if let previewImage {
+                        Image(uiImage: previewImage)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        // Live AVCapture preview goes here on Mac if session already exists;
+                        // otherwise cream placeholder + Pip Scanner soft cue.
+                        VStack(spacing: 10) {
+                            Image("PP_PipScanner")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 96, height: 96)
+                                .accessibilityHidden(true)
+                            Text("Frame your plate")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundStyle(PPColor.muted)
+                        }
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(PPColor.coralInk.opacity(0.85), lineWidth: 2)
+                        .padding(18) // soft guide frame inset — board §03
+                )
+
+            VStack {
+                Spacer()
+                Text(guideText)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.black.opacity(0.45), in: Capsule())
+                    .padding(.bottom, 28)
+            }
+            .allowsHitTesting(false)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Camera viewfinder. \(guideText)")
+    }
+
+    private var modeTabs: some View {
+        HStack(spacing: 0) {
+            ForEach(FoodScanSheetMode.allCases) { tab in
+                Button {
+                    mode = tab
+                } label: {
+                    Text(tab.title)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(mode == tab ? .white : PPColor.ink)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .background(
+                            mode == tab ? PPColor.coralInk : Color.clear,
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(PPColor.card, in: Capsule())
+        .overlay(Capsule().stroke(PPColor.line.opacity(0.6), lineWidth: 1))
+    }
+
+    private var controlsRow: some View {
+        HStack(spacing: 28) {
+            // Gallery secondary (PhotosPicker)
+            PhotosPicker(selection: $photosPickerItem, matching: .images) {
+                Image(systemName: "photo.on.rectangle")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(PPColor.ink)
+                    .frame(width: 48, height: 48)
+                    .background(PPColor.card, in: Circle())
+            }
+            .accessibilityLabel("Choose from photos")
+
+            // Large coral shutter — Photo primary
+            Button(action: onShutter) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(PPColor.coralInk, lineWidth: 4)
+                        .frame(width: 78, height: 78)
+                    Circle()
+                        .fill(PPColor.coralInk)
+                        .frame(width: 64, height: 64)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Shutter")
+
+            // Flash stub (layout match board; no invent behavior)
+            Button {
+                // Optional: toggle torch when live camera lands. No-op OK for first land.
+            } label: {
+                Image(systemName: "bolt.slash")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(PPColor.muted)
+                    .frame(width: 48, height: 48)
+                    .background(PPColor.card, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Flash")
+        }
+        .padding(.top, 4)
+    }
+}
+
+/// Temporary mode enum so this helper file is readable alone.
+/// On land: delete and use FoodScanSheet.CaptureMode (Photo / Search / Barcode).
+enum FoodScanSheetMode: String, CaseIterable, Identifiable {
+    case photo, search, barcode
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .photo: return "Photo"
+        case .search: return "Search"
+        case .barcode: return "Barcode"
+        }
+    }
+}

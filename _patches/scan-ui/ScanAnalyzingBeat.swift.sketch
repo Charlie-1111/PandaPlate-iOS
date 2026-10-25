@@ -1,0 +1,57 @@
+// ScanAnalyzingBeat.swift.sketch — analyzing = Pip Thinking / soft progress
+// HONESTY LOCK: NEVER show kcal, macros, or ingredient guesses while spinning.
+// Cosmetics PAUSED — do not add decorative Premium packs here.
+
+import SwiftUI
+
+struct ScanAnalyzingBeat: View {
+    let reduceMotion: Bool
+
+    @State private var pulse = false
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Spacer()
+
+            Group {
+                if reduceMotion {
+                    Image("PP_PipThinking")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 160, height: 160)
+                } else {
+                    Image("PP_PipThinking")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 160, height: 160)
+                        .scaleEffect(pulse ? 1.04 : 0.96)
+                        .animation(
+                            .easeInOut(duration: 0.9).repeatForever(autoreverses: true),
+                            value: pulse
+                        )
+                        .onAppear { pulse = true }
+                }
+            }
+            .accessibilityLabel("Pip is thinking about your meal")
+
+            Text("Looking at your plate…")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(PPColor.ink)
+
+            Text("Real estimate from the Server — nothing made up while we wait.")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(PPColor.muted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            // Soft indeterminate progress — NOT a macro reveal
+            ProgressView()
+                .tint(PPColor.coralInk)
+                .padding(.top, 8)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PPColor.cream.ignoresSafeArea())
+    }
+}

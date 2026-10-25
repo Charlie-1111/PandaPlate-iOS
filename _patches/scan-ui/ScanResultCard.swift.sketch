@@ -1,0 +1,225 @@
+// ScanResultCard.swift.sketch — §03 “Looks delicious.” editable result
+// HONESTY LOCKS:
+// - AI badge ONLY when hasServerNutrition == true (server returned real values).
+// - Blank kcal / macro fields stay blank — never display invented 0.
+// - Footer honesty: “Photo estimates can vary”.
+// - Save is separate from Scan (caller wires save).
+
+import SwiftUI
+
+struct ScanResultCard: View {
+    let previewImage: UIImage?
+    @Binding var dishName: String
+    @Binding var portionLabel: String
+    @Binding var mealSlot: String
+    @Binding var caloriesText: String
+    @Binding var proteinText: String
+    @Binding var carbsText: String
+    @Binding var fatText: String
+    @Binding var ingredients: [EditableIngredient]
+    let hasServerNutrition: Bool
+    let onBack: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    mealHeader
+                    mealMetaRow
+                    calorieBlock
+                    ingredientsBlock
+                    Text("Photo estimates can vary")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(PPColor.muted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
+                }
+                .padding(18)
+            }
+            saveBar
+        }
+        .background(PPColor.cream.ignoresSafeArea())
+    }
+
+    private var header: some View {
+        HStack {
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(PPColor.ink)
+                    .frame(width: 40, height: 40)
+                    .background(PPColor.card, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back")
+
+            Spacer()
+            Text("Looks delicious.")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(PPColor.ink)
+            Spacer()
+            Color.clear.frame(width: 40, height: 40)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
+    private var mealHeader: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Group {
+                if let previewImage {
+                    Image(uiImage: previewImage)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    PPColor.peach.opacity(0.5)
+                }
+            }
+            .frame(width: 72, height: 72)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Dish name", text: $dishName)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(PPColor.ink)
+
+                // HONESTY: badge only when server returned values
+                if hasServerNutrition {
+                    Text("✨ AI estimate · Review portions")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(red: 0.36, green: 0.56, blue: 0.42), in: Capsule())
+                        // Prefer PPColor.softGreen / forest token if Mac defines one.
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PPColor.line.opacity(0.6), lineWidth: 1)
+        )
+    }
+
+    private var mealMetaRow: some View {
+        HStack(spacing: 12) {
+            labeledField(title: "Meal", text: $mealSlot)
+            labeledField(title: "Portion", text: $portionLabel)
+        }
+    }
+
+    private func labeledField(title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundStyle(PPColor.muted)
+            TextField(title, text: text)
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(PPColor.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(PPColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var calorieBlock: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Blank stays blank — TextField empty string, not "0"
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                TextField("—", text: $caloriesText)
+                    .keyboardType(.numberPad)
+                    .font(.system(size: 36, weight: .black, design: .rounded))
+                    .foregroundStyle(PPColor.coralInk)
+                    .frame(maxWidth: 140)
+                Text("kcal")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(PPColor.coralInk)
+            }
+
+            HStack(spacing: 10) {
+                macroPill(title: "Protein", text: $proteinText)
+                macroPill(title: "Carbs", text: $carbsText)
+                macroPill(title: "Fat", text: $fatText)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func macroPill(title: String, text: Binding<String>) -> some View {
+        VStack(spacing: 4) {
+            TextField("—", text: text)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.center)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(PPColor.ink)
+            Text(title)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(PPColor.muted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(PPColor.peach.opacity(0.45), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var ingredientsBlock: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Ingredients")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(PPColor.ink)
+                Spacer()
+                Text("Edit all")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PPColor.coralInk)
+            }
+
+            ForEach($ingredients) { $item in
+                HStack {
+                    TextField("Ingredient", text: $item.name)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    Spacer()
+                    TextField("g", text: $item.gramsLabel)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(PPColor.muted)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 64)
+                }
+                .padding(12)
+                .background(PPColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+
+            Button {
+                ingredients.append(EditableIngredient(name: "", gramsLabel: ""))
+            } label: {
+                Label("Add ingredient", systemImage: "plus")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(PPColor.coralInk)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(PPColor.peach.opacity(0.55), in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var saveBar: some View {
+        Button(action: onSave) {
+            Text("Save to \(mealSlot.lowercased())")
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity, minHeight: 54)
+                .background(PPColor.coralInk, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(PPColor.cream.opacity(0.96))
+    }
+}
