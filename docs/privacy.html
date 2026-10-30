@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#fbf8f2">
+  <meta name="description" content="Privacy Policy for PandaPlate, an iOS app for ages 13 and older.">
+  <title>PandaPlate Privacy Policy</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #fbf8f2;
+      --surface: #fffdf9;
+      --ink: #292521;
+      --muted: #706961;
+      --line: #e9e1d6;
+      --accent: #c45c3e;
+      --accent-soft: #f8e9e2;
+      --sage: #edf2e9;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.68;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    a:hover { color: #9f452e; }
+    a:focus-visible { outline: 3px solid #d79a85; outline-offset: 3px; border-radius: 4px; }
+    .skip-link {
+      position: absolute; left: 12px; top: -48px; z-index: 2;
+      padding: 8px 12px; border-radius: 8px; background: var(--surface); color: var(--ink);
+    }
+    .skip-link:focus { top: 12px; }
+    .page { width: min(100% - 36px, 640px); margin: 0 auto; padding: 34px 0 56px; }
+    .brand {
+      display: flex; align-items: center; gap: 12px;
+      padding-bottom: 26px; border-bottom: 1px solid var(--line);
+    }
+    .brand img {
+      width: 46px; height: 46px; flex: 0 0 46px; object-fit: cover;
+      border-radius: 14px; background: var(--sage); border: 1px solid rgba(41,37,33,.08);
+    }
+    .brand-name { margin: 0; font-size: 15px; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; }
+    .bundle { margin: 4px 0 0; color: var(--muted); font-size: 12px; letter-spacing: .025em; }
+    .hero { padding: 36px 0 26px; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px;
+      color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 18px; height: 2px; background: var(--accent); border-radius: 2px; }
+    h1 { max-width: 560px; margin: 0; font-size: clamp(34px, 8vw, 48px); line-height: 1.08; letter-spacing: -.045em; font-weight: 730; }
+    .lede { max-width: 530px; margin: 17px 0 0; color: #5f5952; font-size: 17px; line-height: 1.62; }
+    .updated { margin: 17px 0 0; color: var(--muted); font-size: 13px; }
+    .summary {
+      display: grid; grid-template-columns: 1fr; gap: 10px; margin: 2px 0 30px;
+    }
+    .summary-item {
+      padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px;
+      background: rgba(255,253,249,.75); color: #514c45; font-size: 14px; line-height: 1.5;
+    }
+    .summary-item strong { display: block; margin-bottom: 3px; color: var(--ink); font-size: 13px; }
+    .policy { border-top: 1px solid var(--line); }
+    .section {
+      display: grid; grid-template-columns: 42px minmax(0,1fr); gap: 12px;
+      padding: 24px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 18px;
+    }
+    .number {
+      display: grid; place-items: center; width: 32px; height: 32px; margin-top: 1px;
+      border-radius: 11px; background: var(--accent-soft); color: var(--accent);
+      font-size: 12px; line-height: 1; font-weight: 750; font-variant-numeric: tabular-nums;
+    }
+    h2 { margin: 0 0 8px; font-size: 18px; line-height: 1.35; letter-spacing: -.015em; }
+    .section p { margin: 0; color: #514c45; font-size: 15px; }
+    .section p + p { margin-top: 10px; }
+    .section ul { margin: 9px 0 0; padding-left: 19px; color: #514c45; font-size: 15px; }
+    .section li + li { margin-top: 5px; }
+    .note {
+      margin: 13px 0 0; padding: 12px 14px; border-left: 3px solid var(--accent);
+      border-radius: 0 10px 10px 0; background: #f7eee7; color: #514c45; font-size: 14px;
+    }
+    .contact {
+      margin: 24px 0 0; padding: 19px 20px; border-radius: var(--radius);
+      background: var(--sage); color: #454b40;
+    }
+    .contact h2 { margin-bottom: 5px; font-size: 17px; }
+    .contact p { margin: 0; font-size: 14px; }
+    footer { padding-top: 24px; color: var(--muted); font-size: 12px; }
+    footer p { margin: 0; }
+    @media (min-width: 560px) {
+      .page { width: min(100% - 56px, 640px); padding-top: 42px; }
+      .summary { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .summary-item { min-height: 94px; }
+      .section { grid-template-columns: 44px minmax(0,1fr); gap: 14px; padding: 27px 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to policy</a>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <img src="data:image/webp;base64,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" alt="PandaPlate red panda app icon" width="46" height="46">
+        <div>
+          <p class="brand-name">PandaPlate</p>
+          <p class="bundle">iOS app · com.charlie.pandaplate</p>
+        </div>
+      </div>
+      <div class="hero">
+        <p class="eyebrow">Privacy, plainly explained</p>
+        <h1 id="main">PandaPlate Privacy Policy</h1>
+        <p class="lede">This policy explains what PandaPlate handles on your device and what may be shared when you choose to use features such as Food Scan, Apple Health, or CSV export.</p>
+        <p class="updated"><strong>Last updated:</strong> 31 October 2026 · Hong Kong time (Asia/Hong_Kong)</p>
+      </div>
+    </header>
+
+    <aside class="summary" aria-label="Policy highlights">
+      <div class="summary-item"><strong>Local by default</strong>Meal activity and logs typically stay on your device in the current build.</div>
+      <div class="summary-item"><strong>Scans are a choice</strong>A food photo is sent for analysis only after you choose to scan and consent to the upload.</div>
+      <div class="summary-item"><strong>No ad tracking</strong>This build has no ads, no third-party ad SDKs, and does not sell personal data.</div>
+    </aside>
+
+    <main class="policy" aria-label="Privacy policy details">
+      <section class="section" id="age">
+        <div class="number" aria-hidden="true">01</div>
+        <div><h2>Age 13 and older</h2>
+          <p>PandaPlate is intended for people aged 13 and older. We do not knowingly collect personal information from children under 13. If you believe a child under 13 has provided personal information through the app, contact us so we can review the situation and take appropriate steps.</p>
+        </div>
+      </section>
+
+      <section class="section" id="device-data">
+        <div class="number" aria-hidden="true">02</div>
+        <div><h2>Information that stays on your device</h2>
+          <p>In the current build, meal logs, water entries, workout and fasting records, and onboarding answers are generally stored locally or within your app session. They are typically not part of a PandaPlate cloud account or synced to a PandaPlate account.</p>
+          <p>Local storage and retention can depend on the app version, iOS behavior, and your device backup settings. We do not make a blanket promise that device data is never retained elsewhere—for example, device backups are governed by your own settings and Apple’s terms.</p>
+        </div>
+      </section>
+
+      <section class="section" id="sign-in">
+        <div class="number" aria-hidden="true">03</div>
+        <div><h2>Sign in with Apple</h2>
+          <p>PandaPlate offers Sign in with Apple only. If you choose it, Apple handles authentication and may provide limited sign-in information according to the choices you make in Apple’s sign-in flow. The information available can depend on your Apple settings. Sign-in does not mean your meal, water, workout, fasting, or onboarding records are uploaded to a PandaPlate cloud account in the current build.</p>
+        </div>
+      </section>
+
+      <section class="section" id="camera-photos">
+        <div class="number" aria-hidden="true">04</div>
+        <div><h2>Camera and photos</h2>
+          <p>If you use Food Scan, PandaPlate may ask for camera access to take a still photo, or photo-library access if you choose an existing image. You control whether to grant access. PandaPlate does not upload a photo for scanning until you choose to run a scan and consent to that upload.</p>
+        </div>
+      </section>
+
+      <section class="section" id="health">
+        <div class="number" aria-hidden="true">05</div>
+        <div><h2>Apple Health</h2>
+          <p>Apple Health access is optional and read-only. If you connect it and grant permission, PandaPlate may read steps, active energy, exercise, and workout information to support app features. You can manage permission in Apple Health or iOS settings. This version does not write data to Apple Health.</p>
+        </div>
+      </section>
+
+      <section class="section" id="food-scan">
+        <div class="number" aria-hidden="true">06</div>
+        <div><h2>Food Scan and external services</h2>
+          <p>When you use Food Scan and consent to a live recognition request, PandaPlate may send the still meal photo you chose to an owner-hosted HTTPS proxy. Selecting a photo for a manual note alone does not send the image. The app asks for fresh consent before each upload.</p>
+          <p>The current proxy implementation may send the still image to DeepSeek for vision analysis and use USDA FoodData Central to look up nutrient information from food names or identifiers; the USDA lookup is for nutrition data, not for sending your photo to USDA. The proxy and external services must process information to return a result, and may temporarily handle the image or scan details. Exact handling and retention depend on the proxy configuration and each provider’s current practices. DeepSeek may process information under its own policy. We cannot confirm where or for how long DeepSeek may retain or process scan inputs; processing or storage could involve China, and we cannot confirm whether inputs may be used for service improvement or model training. Review the providers’ current terms and privacy information before using Food Scan if this matters to you.</p>
+          <p>Scan results are estimates, not medical or dietary advice. You can review and edit them. Only scan food that you have permission to photograph and upload; do not scan other people or their information.</p>
+          <div class="note">Treat an uploaded scan photo as information shared with an external service. If you do not want that, do not submit the scan.</div>
+        </div>
+      </section>
+
+      <section class="section" id="purchases">
+        <div class="number" aria-hidden="true">07</div>
+        <div><h2>Purchases and subscriptions</h2>
+          <p>In-app purchases are handled through Apple StoreKit. Apple processes the payment; PandaPlate receives the purchase or entitlement status needed to provide, restore, or manage access. We do not receive your full payment card number. You can manage or cancel a subscription in your Apple ID account settings.</p>
+        </div>
+      </section>
+
+      <section class="section" id="ads">
+        <div class="number" aria-hidden="true">08</div>
+        <div><h2>Advertising and sale of data</h2>
+          <p>This build does not include ads or third-party advertising SDKs. We do not sell personal data. These statements describe the current build and may be updated if the app’s features or services change.</p>
+        </div>
+      </section>
+
+      <section class="section" id="exports">
+        <div class="number" aria-hidden="true">09</div>
+        <div><h2>CSV exports</h2>
+          <p>If you choose to export a CSV, iOS presents the system share sheet so you can choose where to send or save the file. The file may contain information from your records. Once you choose another app, service, or destination, its own privacy practices apply.</p>
+        </div>
+      </section>
+
+      <section class="section" id="changes">
+        <div class="number" aria-hidden="true">10</div>
+        <div><h2>Changes to this policy</h2>
+          <p>We may update this policy when PandaPlate or its data practices change. The “Last updated” date above shows when this page was most recently revised. Please review it from time to time.</p>
+        </div>
+      </section>
+    </main>
+
+    <section class="contact" id="contact" aria-labelledby="contact-title">
+      <h2 id="contact-title">Questions?</h2>
+      <p>Contact us at <a href="mailto:lisbon-oondn8@bot.cue.im">lisbon-oondn8@bot.cue.im</a>.</p>
+    </section>
+    <footer><p>PandaPlate · iOS · com.charlie.pandaplate</p></footer>
+  </div>
+</body>
+</html>
