@@ -1,4 +1,5 @@
 import http from "node:http";
+import { timingSafeEqual } from "node:crypto";
 import { open, access } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { createMockScanPreview } from "./mockProviders.mjs";
@@ -62,6 +63,33 @@ const safeScanErrors = new Set([
   "invalid_provider_response",
 ]);
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost"]);
+
+export function listenConfigurationError(host, env = process.env) {
+  if (LOOPBACK_HOSTS.has(host)) return null;
+  const token = env.PANDAPLATE_SCAN_TOKEN;
+  const tokenOk = typeof token === "string" && token.length >= 24;
+  if (env.PANDAPLATE_ALLOW_LAN === "1" && tokenOk) return null;
+  return "Refusing to listen on a non-loopback address. Use 127.0.0.1, or set PANDAPLATE_ALLOW_LAN=1 and a PANDAPLATE_SCAN_TOKEN of at least 24 characters.";
+}
+
+function configuredScanToken(env) {
+  const token = env.PANDAPLATE_SCAN_TOKEN;
+  return typeof token === "string" && token.length > 0 ? token : null;
+}
+
+function bearerMatches(header, token) {
+  const prefix = "Bearer ";
+  if (typeof header !== "string" || !header.startsWith(prefix)) return false;
+  const presented = Buffer.from(header.slice(prefix.length));
+  const expected = Buffer.from(token);
+  if (presented.length !== expected.length) {
+    timingSafeEqual(expected, expected);
+    return false;
+  }
+  return timingSafeEqual(presented, expected);
+}
+
 export function createServer({ env = process.env, providers = {}, liveTestMarkerPath = DEFAULT_LIVE_TEST_MARKER } = {}) {
   const previewProvider = providers.createMockScanPreview ?? createMockScanPreview;
   const liveProvider = providers.runLiveFoodScan ?? runLiveFoodScan;
@@ -104,6 +132,12 @@ export function createServer({ env = process.env, providers = {}, liveTestMarker
     const isLive = request.method === "POST" && request.url === "/v1/scan";
     if (!isMock && !isLive) {
       sendJSON(response, 404, { error: "not_found" });
+      return;
+    }
+    const requiredToken = configuredScanToken(env);
+    if (requiredToken && !bearerMatches(request.headers.authorization, requiredToken)) {
+      request.resume();
+      sendJSON(response, 401, { error: "unauthorized" });
       return;
     }
     if (!request.headers["content-type"]?.toLowerCase().startsWith("application/json")) {
@@ -235,12 +269,17 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error("PORT must be an integer from 1024 to 65535.");
     process.exit(1);
   }
-  const host = process.env.HOST || "0.0.0.0";
+  const host = process.env.HOST || "127.0.0.1";
+  const hostError = listenConfigurationError(host, process.env);
+  if (hostError) {
+    console.error(hostError);
+    process.exit(1);
+  }
   const server = createServer();
   server.listen(port, host, async () => {
     console.log(`PandaPlate local proxy listening at http://${host}:${port}`);
-    if (host === "0.0.0.0" || host === "::") {
-      console.log("LAN tip: point the iOS device at http://<this-Mac-LAN-IP>:" + port + " via Settings → Local scan server (pandaplate.scanBaseURL).");
+    if (!LOOPBACK_HOSTS.has(host)) {
+      console.log("LAN listening is enabled. Scan routes require the configured bearer token. Requests and secrets are not logged.");
     }
     const continuous = process.env.PANDAPLATE_ENABLE_LIVE_SCAN === "1"
       && typeof process.env.DEEPSEEK_API_KEY === "string"

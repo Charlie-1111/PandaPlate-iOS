@@ -53,8 +53,12 @@ enum WeekLogExport {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
         // Atomic write; UTF-8. No BOM required for honesty; Excel may prefer BOM — optional later, not invent.
         guard let data = csv.data(using: .utf8) else { throw CocoaError(.fileWriteInapplicableStringEncoding) }
-        try data.write(to: url, options: .atomic)
-        return url
+        try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        var fileURL = url
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try fileURL.setResourceValues(values)
+        return fileURL
     }
 
     // MARK: Share
