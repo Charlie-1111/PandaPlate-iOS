@@ -1,12 +1,12 @@
 # PandaPlate UI/motion screen map · DESIGN_BOARD lock
 Owner: Pip · Implements: Lead (Cursor) · Product: Patrick  
-Source: `docs/DESIGN_BOARD.png` (same art as References board) · Updated: 2026-10-24 HKT  
+Source: `design/DESIGN_BOARD.png` (same art as References board) · Updated: 2026-10-24 HKT  
 
 BitePal / Charlie mid-intro clip (~5s, mint bg, coral Pip wave + floating hearts): **Open → that full-screen video only** (not the questionnaire). Broader BitePal new-user questionnaire beats: still TBD if more watch notes land.
 
 ## Nest locked question order (board §01–02, before nav pivot)
 splash → main focus → extra support → **Open (Pip hidden)** → **video reveal only** → Pip persona → optional names → meals 2/3/4 → eating multi-select → meal/water toggles → starting point snaps.  
-Defer logging-familiarity / fasting / diet / weekend / cravings unless a later video keeps them. Checklist: `docs/onboarding-owner-brief.md`.
+Defer logging-familiarity / fasting / diet / weekend / cravings unless a later video keeps them. Checklist: `design/onboarding-owner-brief.md`.
 
 ## Visual system (ship everywhere)
 - Palette: `PPColor` cream / card / coral / coralInk / ink / muted / line / mint / peach / lavender — keep; no BitePal brand colors.

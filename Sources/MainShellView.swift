@@ -1319,6 +1319,9 @@ private struct ProfileView: View {
     #if DEBUG
     @State private var showAdvancedDeveloper = false
     @State private var scanBaseURLDraft = UserDefaults.standard.string(forKey: FoodScanClient.baseURLDefaultsKey) ?? FoodScanClient.defaultBaseURL
+    @State private var scanTokenDraft = ""
+    @State private var scanTokenSaved = FoodScanClient.configuredScanToken != nil
+    @State private var scanURLError: String?
     #endif
     @State private var presentedLegalDocument: PandaPlateLegal.Document? = nil
     @State private var notificationAuthStatus: UNAuthorizationStatus = .notDetermined
@@ -1755,7 +1758,7 @@ private struct ProfileView: View {
                     .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.ink)
                     .padding(.top, 8)
-                Text("Device → Mac LAN: set http://<Mac-LAN-IP>:8787 (Simulator can keep 127.0.0.1). Server must bind 0.0.0.0.")
+                Text("Simulator stays on 127.0.0.1. A device on your LAN can use a private address only. The server must stay on loopback unless PANDAPLATE_ALLOW_LAN=1 and a scan token of at least 24 characters are set. Public hosts are rejected.")
                     .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(PPColor.muted)
                 TextField("http://127.0.0.1:8787", text: $scanBaseURLDraft)
@@ -1765,26 +1768,57 @@ private struct ProfileView: View {
                     .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
                     .padding(12)
                     .background(PPColor.cream, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                SecureField("Scan token (leave empty on loopback)", text: $scanTokenDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .padding(12)
+                    .background(PPColor.cream, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                if let scanURLError {
+                    Text(scanURLError)
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.coralInk)
+                }
                 Button {
                     let trimmed = scanBaseURLDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                     if trimmed.isEmpty {
                         UserDefaults.standard.removeObject(forKey: FoodScanClient.baseURLDefaultsKey)
                         scanBaseURLDraft = FoodScanClient.defaultBaseURL
-                    } else {
+                        scanURLError = nil
+                    } else if FoodScanClient.isPrivateScanBaseURL(trimmed) {
                         UserDefaults.standard.set(trimmed, forKey: FoodScanClient.baseURLDefaultsKey)
                         scanBaseURLDraft = trimmed
+                        scanURLError = nil
+                    } else {
+                        scanURLError = "That address isn’t a loopback or private LAN host, so it wasn’t saved."
+                    }
+                    let token = scanTokenDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !token.isEmpty {
+                        UserDefaults.standard.set(token, forKey: FoodScanClient.scanTokenDefaultsKey)
+                        scanTokenDraft = ""
+                        scanTokenSaved = true
                     }
                 } label: {
-                    Text("Save scan base URL")
+                    Text("Save scan server")
                         .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(PPColor.coralInk, in: Capsule())
                 }
                 .buttonStyle(.plain)
-                Text("Active: \(FoodScanClient.configuredBaseURL.absoluteString)")
+                Text("Active: \(FoodScanClient.configuredBaseURL.absoluteString). Token: \(scanTokenSaved ? "saved" : "not set"). Leave the token blank to keep the saved one.")
                     .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(PPColor.muted)
+                if scanTokenSaved {
+                    Button("Remove saved token") {
+                        UserDefaults.standard.removeObject(forKey: FoodScanClient.scanTokenDefaultsKey)
+                        scanTokenDraft = ""
+                        scanTokenSaved = false
+                    }
+                    .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.coralInk)
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.bottom, 4)
         } label: {

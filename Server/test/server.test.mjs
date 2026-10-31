@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
+import http from "node:http";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { afterEach, test } from "node:test";
-import { createServer } from "../src/server.mjs";
+import { createServer, listenConfigurationError } from "../src/server.mjs";
 import { normalizeUploadedImage } from "../src/liveProviders.mjs";
 
 const running = new Set();
@@ -222,6 +223,92 @@ test("continuous live mode reports health mode live and allows multiple scans wi
   assert.equal(calls, 2);
   // Marker must not be claimed in continuous mode.
   await assert.rejects(readFile(liveTestMarkerPath), { code: "ENOENT" });
+});
+
+function rawGet(baseURL, path) {
+  const url = new URL(baseURL);
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      hostname: url.hostname,
+      port: url.port,
+      path,
+      method: "GET",
+    }, (res) => {
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => resolve({
+        status: res.statusCode,
+        body: Buffer.concat(chunks).toString("utf8"),
+      }));
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+test("unknown paths do not return repository files", async () => {
+  const baseURL = await startServer();
+  for (const path of ["/../.env", "/package.json", "/%2e%2e/package.json", "/v1/scan/preview/../../package.json"]) {
+    const response = await rawGet(baseURL, path);
+    assert.equal(response.status, 404);
+    assert.equal(response.body, JSON.stringify({ error: "not_found" }));
+    assert.doesNotMatch(response.body, /DEEPSEEK|PRIVATE KEY|node_modules/);
+  }
+});
+
+test("non-loopback listen is refused unless LAN mode and a long token are both set", () => {
+  assert.equal(listenConfigurationError("127.0.0.1", {}), null);
+  assert.equal(listenConfigurationError("localhost", {}), null);
+  assert.match(listenConfigurationError("0.0.0.0", {}), /Refusing to listen/);
+  assert.match(listenConfigurationError("0.0.0.0", { PANDAPLATE_ALLOW_LAN: "1" }), /Refusing to listen/);
+  assert.match(listenConfigurationError("0.0.0.0", {
+    PANDAPLATE_ALLOW_LAN: "1",
+    PANDAPLATE_SCAN_TOKEN: "short",
+  }), /Refusing to listen/);
+  assert.equal(listenConfigurationError("192.168.1.20", {
+    PANDAPLATE_ALLOW_LAN: "1",
+    PANDAPLATE_SCAN_TOKEN: "test-token-not-a-real-secret-01",
+  }), null);
+});
+
+test("a scan token rejects unauthenticated callers before a provider call or one-shot claim", async () => {
+  let calls = 0;
+  const liveTestMarkerPath = await newLiveTestMarkerPath();
+  const token = "test-token-not-a-real-secret-01";
+  const baseURL = await startServer({
+    env: {
+      PANDAPLATE_ENABLE_ONE_LIVE_TEST: "1",
+      DEEPSEEK_API_KEY: "test-only",
+      PANDAPLATE_SCAN_TOKEN: token,
+    },
+    liveTestMarkerPath,
+    providers: { runLiveFoodScan: async () => { calls += 1; throw new Error("unexpected"); } },
+  });
+  const denied = await fetch(`${baseURL}/v1/scan`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ mode: "live", consent: true, imageBase64: "AA==", mimeType: "image/jpeg" }),
+  });
+  assert.equal(denied.status, 401);
+  assert.deepEqual(await denied.json(), { error: "unauthorized" });
+  const wrong = await fetch(`${baseURL}/v1/scan`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: "Bearer wrong-token-value-not-the-real-one",
+    },
+    body: JSON.stringify({ mode: "live", consent: true, imageBase64: "AA==", mimeType: "image/jpeg" }),
+  });
+  assert.equal(wrong.status, 401);
+  assert.equal(calls, 0);
+  const health = await fetch(`${baseURL}/healthz`);
+  assert.equal((await health.json()).oneShotTestEligible, true);
+  const preview = await fetch(`${baseURL}/v1/scan/preview`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    body: JSON.stringify({ mode: "mock" }),
+  });
+  assert.equal(preview.status, 200);
 });
 
 test("continuous live mode still requires explicit consent", async () => {

@@ -1,6 +1,6 @@
 # PandaPlate local proxy (development only)
 
-This Node service is not hosted, is not production-ready, and is not called by the iOS app. The app contains no scan endpoint call, mock result or live-provider UI. The server binds to `127.0.0.1`, has no dependency on the app runtime, writes no photos to disk, and never logs request bodies, images, model responses or credentials. Do not expose it to a LAN or the public internet.
+This Node service is a local development proxy. It is not production-ready. By default it binds to `127.0.0.1` only. It writes no photos to disk and never logs request bodies, images, model responses or credentials. Do not expose it to a LAN or the public internet. A non-loopback bind is refused unless `PANDAPLATE_ALLOW_LAN=1` and `PANDAPLATE_SCAN_TOKEN` (at least 24 characters) are both set. When that token is set, `POST /v1/scan` and `POST /v1/scan/preview` require `Authorization: Bearer <token>` before any image is read or any provider is called.
 
 ## Current state
 

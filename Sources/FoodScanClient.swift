@@ -57,12 +57,48 @@ enum FoodScanClientError: LocalizedError, Equatable {
 enum FoodScanClient {
     static let defaultBaseURL = "http://127.0.0.1:8787"
     static let baseURLDefaultsKey = "pandaplate.scanBaseURL"
+    static let scanTokenDefaultsKey = "pandaplate.scanToken"
 
     static var configuredBaseURL: URL {
+        let fallback = URL(string: defaultBaseURL)!
+        #if DEBUG
         let raw = UserDefaults.standard.string(forKey: baseURLDefaultsKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let value = (raw?.isEmpty == false) ? raw! : defaultBaseURL
-        return URL(string: value) ?? URL(string: defaultBaseURL)!
+        guard let raw, !raw.isEmpty, isPrivateScanBaseURL(raw), let url = URL(string: raw) else {
+            return fallback
+        }
+        return url
+        #else
+        return fallback
+        #endif
+    }
+
+    /// Loopback and private LAN hosts only. Public hosts are rejected so a saved URL cannot upload a meal photo off the device network.
+    static func isPrivateScanBaseURL(_ raw: String) -> Bool {
+        guard let url = URL(string: raw),
+              let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              url.user == nil,
+              url.password == nil,
+              let host = url.host?.lowercased()
+        else { return false }
+        if host == "localhost" || host == "127.0.0.1" || host == "::1" { return true }
+        let parts = host.split(separator: ".")
+        guard parts.count == 4 else { return false }
+        let octets = parts.compactMap { Int($0) }
+        guard octets.count == 4, octets.allSatisfy({ (0...255).contains($0) }) else { return false }
+        if octets[0] == 10 { return true }
+        if octets[0] == 192 && octets[1] == 168 { return true }
+        if octets[0] == 172 && (16...31).contains(octets[1]) { return true }
+        if octets[0] == 169 && octets[1] == 254 { return true }
+        return false
+    }
+
+    static var configuredScanToken: String? {
+        let raw = UserDefaults.standard.string(forKey: scanTokenDefaultsKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let raw, !raw.isEmpty else { return nil }
+        return raw
     }
 
     static func jpegBase64(from image: UIImage, maxBytes: Int = 900_000) -> String? {
@@ -83,6 +119,9 @@ enum FoodScanClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = configuredScanToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.timeoutInterval = 60
         let body: [String: Any] = [
             "mode": "live",
@@ -127,6 +166,8 @@ enum FoodScanClient {
 
     static func userMessage(forServerCode code: String, fallback: String?) -> String {
         switch code {
+        case "unauthorized":
+            return "The local scan server rejected this request. Check the scan token in developer settings."
         case "live_scan_not_enabled":
             return "Live food scan isn’t enabled on the local server right now."
         case "explicit_live_consent_required":
