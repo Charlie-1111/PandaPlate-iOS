@@ -101,10 +101,31 @@ final class PandaPlateSafetyTests: XCTestCase {
         XCTAssertLessThanOrEqual(store.caloriesEaten ?? Int.max, 100_000)
     }
 
+    func testAddingThenRemovingAGlassRestoresThePreviousWaterTotal() {
+        let store = AppStore()
+        XCTAssertTrue(store.addWater(WaterServingSize.bottle.milliliters))
+        let previous = store.waterML
+        XCTAssertTrue(store.addWater(WaterServingSize.glass.milliliters))
+        XCTAssertEqual(store.waterML, previous + WaterServingSize.glass.milliliters)
+        let glassIndex = try XCTUnwrap(store.waterServingsML.firstIndex(where: { $0 == WaterServingSize.glass.milliliters }))
+        XCTAssertTrue(store.setWaterServing(nil, at: glassIndex))
+        XCTAssertEqual(store.waterML, previous)
+        XCTAssertEqual(WaterQuickLogModel.filledCount(for: store.waterServingsML), 1)
+    }
+
     func testWaterAndSessionDataAreBoundedAndResettable() {
         let store = AppStore()
         for _ in 0..<25 { store.addWater(250) }
-        XCTAssertEqual(store.waterML, 4_000)
+        XCTAssertEqual(store.waterML, WaterQuickLogModel.maximumCups * WaterServingSize.glass.milliliters)
+        XCTAssertEqual(WaterQuickLogModel.filledCount(for: store.waterServingsML), WaterQuickLogModel.maximumCups)
+        XCTAssertFalse(store.addWater(250))
+
+        let fullBottles = AppStore()
+        for _ in 0..<WaterQuickLogModel.maximumCups {
+            XCTAssertTrue(fullBottles.addWater(WaterServingSize.bottle.milliliters))
+        }
+        XCTAssertEqual(fullBottles.waterML, WaterQuickLogModel.maximumTotalML)
+        XCTAssertFalse(fullBottles.addWater(WaterServingSize.bottle.milliliters))
 
         store.addMeal(name: "Lunch", calories: nil, imageData: nil)
         store.removeMeal(id: store.meals[0].id)
