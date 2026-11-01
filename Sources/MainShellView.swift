@@ -1741,7 +1741,7 @@ private struct ProfileView: View {
                 Label("Your data stays here", systemImage: "lock.fill")
                     .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(PPColor.ink)
-                Text("Meals, photos, water and preferences stay in memory only and reset when the app closes. Nothing syncs to an account or cloud.")
+                Text("Meals, photos, water and preferences stay in memory only and reset when the app closes. Nothing syncs to an account or cloud. Clear this session also removes the Sign in with Apple identifier from this device.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
                 PandaPlateLegalLinksRow(style: .profile, presentedDocument: $presentedLegalDocument)

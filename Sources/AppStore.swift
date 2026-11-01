@@ -121,8 +121,6 @@ final class AppStore: ObservableObject {
     @Published var estimatedReachSkippedUnder18 = false
     @Published var appleUserIdentifier: String?
     @Published var appleEmail: String?
-    @Published var googleUserIdentifier: String?
-    @Published var googleEmail: String?
     @Published var continuedWithoutAccount = false
     @Published var waterServingsML: [Int?] = Array(repeating: nil, count: WaterQuickLogModel.maximumCups)
     @Published private(set) var canUndoWaterChange = false
@@ -275,8 +273,6 @@ final class AppStore: ObservableObject {
         estimatedReachSkippedUnder18 = draft.estimatedReachSkippedUnder18
         appleUserIdentifier = draft.appleUserIdentifier
         appleEmail = draft.appleEmail
-        googleUserIdentifier = draft.googleUserIdentifier
-        googleEmail = draft.googleEmail
         continuedWithoutAccount = draft.continuedWithoutAccount
         finishedOnboarding = true
         Task { @MainActor in
@@ -334,8 +330,6 @@ final class AppStore: ObservableObject {
         estimatedReachSkippedUnder18 = false
         appleUserIdentifier = nil
         appleEmail = nil
-        googleUserIdentifier = nil
-        googleEmail = nil
         continuedWithoutAccount = false
     }
 }

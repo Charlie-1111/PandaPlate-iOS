@@ -3,10 +3,6 @@ options:
   bundleIdPrefix: com.charlie
   deploymentTarget:
     iOS: "17.0"
-packages:
-  GoogleSignIn:
-    url: https://github.com/google/GoogleSignIn-iOS
-    from: "9.0.0"
 targets:
   PandaPlate:
     type: application
@@ -22,6 +18,8 @@ targets:
       - path: Resources/PipLife
         buildPhase: resources
         type: folder
+      - path: PrivacyInfo.xcprivacy
+        buildPhase: resources
     info:
       path: Info.plist
       properties:
@@ -31,26 +29,15 @@ targets:
         NSHealthShareUsageDescription: PandaPlate reads steps, active energy, exercise time, and workouts from Apple Health only when you choose Connect — to show today’s movement and optionally log workouts. We don’t write to Health in this version.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
-        # Google Sign-In — paste real iOS OAuth Client ID from Google Cloud Console
-        # (bundle com.charlie.pandaplate). Also set CFBundleURLSchemes to the
-        # reversed client id (com.googleusercontent.apps.<prefix>).
-        GIDClientID: 779403414286-37gn54tsa14ajbnequtq6kk54hkhsni3.apps.googleusercontent.com
-        CFBundleURLTypes:
-          - CFBundleURLName: GoogleSignIn
-            CFBundleTypeRole: Editor
-            CFBundleURLSchemes:
-              - com.googleusercontent.apps.779403414286-37gn54tsa14ajbnequtq6kk54hkhsni3
     entitlements:
       path: PandaPlate.entitlements
       properties:
+        com.apple.developer.applesignin:
+          - Default
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.access: []
     dependencies:
       - sdk: HealthKit.framework
-      - package: GoogleSignIn
-        product: GoogleSignIn
-      - package: GoogleSignIn
-        product: GoogleSignInSwift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.charlie.pandaplate

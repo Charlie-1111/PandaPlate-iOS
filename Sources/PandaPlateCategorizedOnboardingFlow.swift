@@ -1,9 +1,7 @@
 import SwiftUI
-import UIKit
 import UserNotifications
 import StoreKit
 import AuthenticationServices
-import GoogleSignIn
 
 /// A drop-in onboarding flow. It owns only temporary UI state; the host decides what to store.
 /// It does not edit AppStore, Home/navigation, health data, meals, or nutrition calculations.
@@ -34,7 +32,6 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     @State private var notificationRequestBusy = false
     @ObservedObject private var healthSync = HealthKitActivitySync.shared
     @State private var appleSignInError: String?
-    @State private var googleSignInError: String?
     @FocusState private var focusedField: Field?
     @Environment(\.requestReview) private var requestReview
 
@@ -211,7 +208,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     }
 
     private var hasSignedInAccount: Bool {
-        draft.appleUserIdentifier != nil || draft.googleUserIdentifier != nil
+        draft.appleUserIdentifier != nil
     }
 
     private var requiredMeasurementMissing: Bool {
@@ -435,7 +432,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .finish: "Review your answers. No nutrition target, BMI, or macros are calculated."
         case .rateApp: "Optional. A soft thank-you — Apple may show a rating prompt once."
         case .softPaywall: "Optional Premium for extra Pip looks, show-up history, and session export. Free remains usable."
-        case .account: "Sign in with Apple or Google to finish setup. An account is required."
+        case .account: "Sign in with Apple to finish setup. No PandaPlate server account is created."
         case .welcome: "Start with one small step that feels right for you."
         }
     }
@@ -1116,7 +1113,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             .accessibilityLabel(primaryTitle)
             .accessibilityHint(
                 step == .account && requiredMeasurementMissing
-                ? "Sign in with Apple or Google to finish setup."
+                ? "Sign in with Apple to finish setup."
                 : (requiredMeasurementMissing ? "Choose an answer to continue — every question is required." : "")
             )
             if let skipTitle = step.skipTitle {
@@ -2305,7 +2302,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                             .multilineTextAlignment(.center)
                             .padding(.top, 12)
 
-                        Text("Sign in with Apple or Google to finish setup. An account is required.")
+                        Text("Sign in with Apple to finish setup. This stays on this device. Clear this session in Settings removes it. No PandaPlate server account is created.")
                             .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.muted)
                             .multilineTextAlignment(.center)
@@ -2334,7 +2331,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     .disabled(!hasSignedInAccount)
                     .opacity(hasSignedInAccount ? 1 : 0.45)
                     .accessibilityLabel(hasSignedInAccount ? "Enter PandaPlate" : "Sign in to continue")
-                    .accessibilityHint(hasSignedInAccount ? "" : "Sign in with Apple or Google to finish setup.")
+                    .accessibilityHint(hasSignedInAccount ? "" : "Sign in with Apple to finish setup.")
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, 8)
@@ -2363,36 +2360,10 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 .frame(maxWidth: .infinity, minHeight: 56)
                 .clipShape(Capsule())
                 .accessibilityLabel("Sign in with Apple")
-
-                // Visual twin of SignInWithAppleButton: full-width capsule, centered icon+label.
-                Button(action: startGoogleSignIn) {
-                    HStack(spacing: 10) {
-                        Spacer(minLength: 0)
-                        Image(systemName: "g.circle.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
-                            .accessibilityHidden(true)
-                        Text("Continue with Google")
-                            .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                            .foregroundStyle(PPColor.ink)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                    .background(Color.white, in: Capsule())
-                    .overlay(Capsule().stroke(PPColor.line.opacity(0.9), lineWidth: 1))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Continue with Google")
             }
 
             if let appleSignInError {
                 Text(appleSignInError)
-                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.coralInk)
-            }
-            if let googleSignInError {
-                Text(googleSignInError)
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.coralInk)
             }
@@ -2402,10 +2373,10 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(PPColor.coralInk)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(draft.appleUserIdentifier != nil ? "Signed in with Apple" : "Signed in with Google")
+                        Text("Signed in with Apple")
                             .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.ink)
-                        if let email = (draft.appleEmail ?? draft.googleEmail), !email.isEmpty {
+                        if let email = draft.appleEmail, !email.isEmpty {
                             Text(email)
                                 .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                                 .foregroundStyle(PPColor.muted)
@@ -2438,68 +2409,8 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 appleSignInError = nil
                 return
             }
-            appleSignInError = "Sign in with Apple couldn’t finish. Try again, or use Google."
+            appleSignInError = "Sign in with Apple couldn’t finish. Try again."
         }
-    }
-
-    private func startGoogleSignIn() {
-        googleSignInError = nil
-        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
-              !clientID.isEmpty else {
-            googleSignInError = "Google Sign-In needs a Client ID in Info.plist (GIDClientID)."
-            return
-        }
-        if clientID.contains("REPLACE_WITH_GOOGLE") {
-            googleSignInError = "Google Sign-In needs a Client ID. Paste your iOS OAuth Client ID into Info.plist (GIDClientID) and set the URL scheme to the reversed client id from Google Cloud Console."
-            return
-        }
-
-        // Ensure configuration is set from Bundle (single source of truth).
-        if GIDSignIn.sharedInstance.configuration == nil {
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-        }
-
-        guard let presenter = Self.topPresentingViewController() else {
-            googleSignInError = "Couldn’t open Google Sign-In. Try again, or use Apple."
-            return
-        }
-
-        GIDSignIn.sharedInstance.signIn(withPresenting: presenter) { result, error in
-            DispatchQueue.main.async {
-                if let error {
-                    let ns = error as NSError
-                    // User cancel — soft.
-                    if ns.domain == "com.google.GIDSignIn", ns.code == -5 {
-                        googleSignInError = nil
-                        return
-                    }
-                    googleSignInError = "Google Sign-In couldn’t finish. Try again, or use Apple."
-                    return
-                }
-                guard let user = result?.user else {
-                    googleSignInError = "Google Sign-In didn’t return a usable account. Try again, or use Apple."
-                    return
-                }
-                draft.googleUserIdentifier = user.userID
-                if let email = user.profile?.email, !email.isEmpty {
-                    draft.googleEmail = email
-                }
-                draft.continuedWithoutAccount = false
-                googleSignInError = nil
-            }
-        }
-    }
-
-    /// Active window scene root for `GIDSignIn.sharedInstance.signIn(withPresenting:)`.
-    private static func topPresentingViewController() -> UIViewController? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let active = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
-        let window = active?.windows.first(where: \.isKeyWindow) ?? active?.windows.first
-        var top = window?.rootViewController
-        while let presented = top?.presentedViewController {
-            top = presented
-        }
-        return top
     }
 
     private func refreshWeightProjectionEstimate() {

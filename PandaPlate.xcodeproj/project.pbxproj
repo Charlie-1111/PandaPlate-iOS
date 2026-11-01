@@ -7,13 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		083B5DE4E73931748C2C2964 /* .manus-ca6f577c4bcf04d5426a404d5d2c3644.tmp in Resources */ = {isa = PBXBuildFile; fileRef = 55F6CFBFCAAF603EDB23BDAF /* .manus-ca6f577c4bcf04d5426a404d5d2c3644.tmp */; };
+		BB11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy */; };
 		0CA4E5F2234683D82377E282 /* BMICategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8786DA115243BAB032702A48 /* BMICategory.swift */; };
 		0FED0FA062EBDF6BDB0B76EE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30ECF3B56BE4A6E3003B1A36 /* Assets.xcassets */; };
 		154AFBFCAEC117F8B2254D82 /* MainShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C8B04F7136C9CE4C33C09D4 /* MainShellView.swift */; };
 		161A59BA6BADEE6086B0F8CD /* WorkoutPickerLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E475406DD84A5EA99A1EF634 /* WorkoutPickerLogView.swift */; };
 		1639BA92CF738A8597354D9C /* PandaPlateSnapValueSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7DF727AD7A7FBB06B641DA8 /* PandaPlateSnapValueSelector.swift */; };
-		17D9721A52D68FFD0F713A26 /* .manus-75584b00db6e06845d1d642f064c4043.tmp in Resources */ = {isa = PBXBuildFile; fileRef = 84B5679402768361ED023092 /* .manus-75584b00db6e06845d1d642f064c4043.tmp */; };
 		1D5D1D189D8398D45DD11100 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BF8E05BC219D14818FAFFA8 /* DesignSystem.swift */; };
 		210FD7FB258B75E3B59476C8 /* PandaPlateChallengeAndHeartsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 360CC14B299E563A8022A7C1 /* PandaPlateChallengeAndHeartsTests.swift */; };
 		24AB5DDAE426528C7DA6C1BE /* BoundedPhotoLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23EE35A193E86D26BFFFAE78 /* BoundedPhotoLoader.swift */; };
@@ -23,7 +22,6 @@
 		2BD89CE8C0DE839006DDB652 /* FoodScanClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C30CDD3620F84730FB67D34 /* FoodScanClient.swift */; };
 		2C51984DF19C8DA4787F6DCC /* PremiumAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 384E714AD5EE50129AF9C3FD /* PremiumAccess.swift */; };
 		2F2C998D0A16EE91E79B1AAC /* PandaPlateMidflowRevealArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0B7F28815D45D58E1CFB5D /* PandaPlateMidflowRevealArtwork.swift */; };
-		31D8FD3B6CDC8D2B3B63B3A3 /* .manus-0e9ff5de457923a1c384d6425e5e2e60.tmp in Resources */ = {isa = PBXBuildFile; fileRef = 07D46D1DCFAEAA6058B2FAAE /* .manus-0e9ff5de457923a1c384d6425e5e2e60.tmp */; };
 		45147AF025E43F78E6671878 /* PipOnboardingMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C275CF1A8B91DA338D34820 /* PipOnboardingMotion.swift */; };
 		4908C2173E5029A5D3FC575F /* PandaPlateRevisionUIAccessibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 595E6A6A5530A11B99504F44 /* PandaPlateRevisionUIAccessibilityTests.swift */; };
 		4A5EDD30EC6B1437055817CC /* WaterQuickLogModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C9C3B3A4EEDF2B482B53D2 /* WaterQuickLogModel.swift */; };
@@ -34,7 +32,6 @@
 		648FBE51A331CCB6D3F750D2 /* USDAFavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F9F4280D54BEBF40D50210F /* USDAFavoritesStore.swift */; };
 		659F7242D587843EEDDCAB82 /* PandaPlateCategorizedOnboardingFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC41B1DCD57FF970E33E01F1 /* PandaPlateCategorizedOnboardingFlow.swift */; };
 		6622D860CF9D7DB5541A8A51 /* PipLifeLoopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD991B27074200CE1140411 /* PipLifeLoopView.swift */; };
-		6672BDBCD830091D4DE4CF73 /* .manus-84d0c627d0966aa6bf5bd5ba4e6d2c61.tmp in Resources */ = {isa = PBXBuildFile; fileRef = ACF2DA27A07714CCD6D33648 /* .manus-84d0c627d0966aa6bf5bd5ba4e6d2c61.tmp */; };
 		68CEADAA86C68D34F2CC0E00 /* PandaPlateOnboardingDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04458D4223793CA3DAFCFBFB /* PandaPlateOnboardingDraft.swift */; };
 		6B6F2F1D5393D5FEEC5582DE /* PandaPlateRevisionSafetyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85D4D7E32B3D98A22159C509 /* PandaPlateRevisionSafetyTests.swift */; };
 		7AAC31D5663DA12FA37584B6 /* PandaPlateApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F3F2671B35E510349E8ACD /* PandaPlateApp.swift */; };
@@ -42,19 +39,14 @@
 		7C22C589F6457C4C23C782D4 /* SoftShowUpStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6CAFBC4153B5BB49E325BA9 /* SoftShowUpStore.swift */; };
 		7F2AA44A91504525D00583EB /* FastingLogDurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B7A33AB40C3D8019F03AB9 /* FastingLogDurationTests.swift */; };
 		82715660CCFD0520B3AA785B /* red_panda_welcome_animation.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 24B81C5530D64C3CA6927ED7 /* red_panda_welcome_animation.mp4 */; };
-		8C7B38BDCCF666F403461105 /* .manus-3fc4a739b340f6ad3e63ec38741c7969.tmp in Resources */ = {isa = PBXBuildFile; fileRef = 7FCE05424A15183BBB5C2E92 /* .manus-3fc4a739b340f6ad3e63ec38741c7969.tmp */; };
-		8D50A3C059CEEB6D111B9F1F /* .manus-9c32781892f985e09fc0eb810c42e8c3.tmp in Resources */ = {isa = PBXBuildFile; fileRef = FEFDB2158384539AD4249DA0 /* .manus-9c32781892f985e09fc0eb810c42e8c3.tmp */; };
 		8F62FC7BB2C35A06AB76CA3C /* WeekLogExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38ADB639DB7B4EBA7D871B74 /* WeekLogExport.swift */; };
-		90F7E5FD34B3131E1F69085D /* .manus-0d6187a3043ed1c6223808d739babc70.tmp in Resources */ = {isa = PBXBuildFile; fileRef = 79E389EBC2397B416323A204 /* .manus-0d6187a3043ed1c6223808d739babc70.tmp */; };
 		9136C21E379D49DC94A5DD71 /* LegalDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41B2AFA5736B4B7D5431B99 /* LegalDocuments.swift */; };
 		9E4A9E63449CB7C1EE3BF744 /* ReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBF9C3BC62B3F5A118ABDE76 /* ReminderNotifications.swift */; };
-		A6B204A7AFBB2B060CFBD04B /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = E712405EDE372CAE398AC560 /* GoogleSignInSwift */; };
 		AAB39E8FF41413A632F49C09 /* HealthKitActivitySync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F8934708904503B5343352 /* HealthKitActivitySync.swift */; };
 		B80590DDE89D3B4771D752F8 /* PipLife in Resources */ = {isa = PBXBuildFile; fileRef = A4DD75690D1C13D053380506 /* PipLife */; };
 		B88291110311051368915BB8 /* PandaPlateSafetyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE7E75EA490CB6E46750CEF8 /* PandaPlateSafetyTests.swift */; };
 		B91A61C49D7C080AF703C029 /* PipLook.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE49F84562E06B453D173999 /* PipLook.swift */; };
 		BB8529E03CDAF5165B2570F5 /* FastingLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F51F61B948652B9713B2ED9D /* FastingLogView.swift */; };
-		C454571412F32A7A1F608B74 /* .manus-4a80f700465c9dcebe16a22f802f849f.tmp in Resources */ = {isa = PBXBuildFile; fileRef = 454A77377CC8FB838C1922F0 /* .manus-4a80f700465c9dcebe16a22f802f849f.tmp */; };
 		C76E4A03C6CFE4ADB3A955AB /* WaterQuickLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1515252E9E942830990FEFA8 /* WaterQuickLogView.swift */; };
 		CA365D713B71C69D98C7F77B /* PandaPlateStatusBarHidden.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5FC12EA94097E1B01256FB /* PandaPlateStatusBarHidden.swift */; };
 		CDC2996075F08A7304E26999 /* WorkoutFeatureModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89BD5E13A576E192D36AD86A /* WorkoutFeatureModel.swift */; };
@@ -63,8 +55,6 @@
 		DB6830076ED0D47B30C40057 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 724E41EF6756EE6A70E5DB70 /* HealthKit.framework */; };
 		DBCD88C7EF931B2190F624A9 /* CameraPhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E0452DDA1A09FEEC083F65B /* CameraPhotoPicker.swift */; };
 		E3B54AE20A56F4FCF737DFFF /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F92FA288FEE4D403F806E99 /* OnboardingFlowView.swift */; };
-		E8E2891E25BFE545CA65F532 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 59508498BE87FFBFAF80077F /* GoogleSignIn */; };
-		ED77D4A67E1FD9F920032E92 /* .manus-d5270345f270abb94ae3d97bb8d26409.tmp in Resources */ = {isa = PBXBuildFile; fileRef = AE01DB16E6476496940CEC9A /* .manus-d5270345f270abb94ae3d97bb8d26409.tmp */; };
 		F35B8446765A1D24F97B922B /* PandaPlateFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4422E542CF5F27E1A5B6B699 /* PandaPlateFlowTests.swift */; };
 		F43A956B7AE34B36BA9B9003 /* PandaPlateChallengeProgress.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CB7407C08FE8C0697E811D0 /* PandaPlateChallengeProgress.swift */; };
 		F9429CD3A0AEC21216EE14CB /* FirstSuccessMoments.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5138A16747B23B072D81D38E /* FirstSuccessMoments.swift */; };
@@ -88,8 +78,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		AA11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		04458D4223793CA3DAFCFBFB /* PandaPlateOnboardingDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateOnboardingDraft.swift; sourceTree = "<group>"; };
-		07D46D1DCFAEAA6058B2FAAE /* .manus-0e9ff5de457923a1c384d6425e5e2e60.tmp */ = {isa = PBXFileReference; path = ".manus-0e9ff5de457923a1c384d6425e5e2e60.tmp"; sourceTree = "<group>"; };
 		14C9C3B3A4EEDF2B482B53D2 /* WaterQuickLogModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterQuickLogModel.swift; sourceTree = "<group>"; };
 		1515252E9E942830990FEFA8 /* WaterQuickLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterQuickLogView.swift; sourceTree = "<group>"; };
 		1A71537D2473A12AFD4213A9 /* PandaPlateTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PandaPlateTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -110,21 +100,16 @@
 		3F9F4280D54BEBF40D50210F /* USDAFavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USDAFavoritesStore.swift; sourceTree = "<group>"; };
 		3FD991B27074200CE1140411 /* PipLifeLoopView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipLifeLoopView.swift; sourceTree = "<group>"; };
 		4422E542CF5F27E1A5B6B699 /* PandaPlateFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateFlowTests.swift; sourceTree = "<group>"; };
-		454A77377CC8FB838C1922F0 /* .manus-4a80f700465c9dcebe16a22f802f849f.tmp */ = {isa = PBXFileReference; path = ".manus-4a80f700465c9dcebe16a22f802f849f.tmp"; sourceTree = "<group>"; };
 		5138A16747B23B072D81D38E /* FirstSuccessMoments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstSuccessMoments.swift; sourceTree = "<group>"; };
 		53902054156087BFD1A6B8B7 /* pip_peek_swipe.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = pip_peek_swipe.gif; sourceTree = "<group>"; };
 		54D4F09317F1E7EEC0828CEC /* PandaPlate.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PandaPlate.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		54F8934708904503B5343352 /* HealthKitActivitySync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitActivitySync.swift; sourceTree = "<group>"; };
-		55F6CFBFCAAF603EDB23BDAF /* .manus-ca6f577c4bcf04d5426a404d5d2c3644.tmp */ = {isa = PBXFileReference; path = ".manus-ca6f577c4bcf04d5426a404d5d2c3644.tmp"; sourceTree = "<group>"; };
 		595E6A6A5530A11B99504F44 /* PandaPlateRevisionUIAccessibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateRevisionUIAccessibilityTests.swift; sourceTree = "<group>"; };
 		5C275CF1A8B91DA338D34820 /* PipOnboardingMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipOnboardingMotion.swift; sourceTree = "<group>"; };
 		60F3F2671B35E510349E8ACD /* PandaPlateApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateApp.swift; sourceTree = "<group>"; };
 		66E196419AB5EE9236019C98 /* AppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStore.swift; sourceTree = "<group>"; };
 		724E41EF6756EE6A70E5DB70 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
-		79E389EBC2397B416323A204 /* .manus-0d6187a3043ed1c6223808d739babc70.tmp */ = {isa = PBXFileReference; path = ".manus-0d6187a3043ed1c6223808d739babc70.tmp"; sourceTree = "<group>"; };
 		7B5FC12EA94097E1B01256FB /* PandaPlateStatusBarHidden.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateStatusBarHidden.swift; sourceTree = "<group>"; };
-		7FCE05424A15183BBB5C2E92 /* .manus-3fc4a739b340f6ad3e63ec38741c7969.tmp */ = {isa = PBXFileReference; path = ".manus-3fc4a739b340f6ad3e63ec38741c7969.tmp"; sourceTree = "<group>"; };
-		84B5679402768361ED023092 /* .manus-75584b00db6e06845d1d642f064c4043.tmp */ = {isa = PBXFileReference; path = ".manus-75584b00db6e06845d1d642f064c4043.tmp"; sourceTree = "<group>"; };
 		85D4D7E32B3D98A22159C509 /* PandaPlateRevisionSafetyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateRevisionSafetyTests.swift; sourceTree = "<group>"; };
 		8786DA115243BAB032702A48 /* BMICategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BMICategory.swift; sourceTree = "<group>"; };
 		89BD5E13A576E192D36AD86A /* WorkoutFeatureModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFeatureModel.swift; sourceTree = "<group>"; };
@@ -134,8 +119,6 @@
 		9F92FA288FEE4D403F806E99 /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
 		A4DD75690D1C13D053380506 /* PipLife */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PipLife; path = Resources/PipLife; sourceTree = SOURCE_ROOT; };
 		A7DF727AD7A7FBB06B641DA8 /* PandaPlateSnapValueSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateSnapValueSelector.swift; sourceTree = "<group>"; };
-		ACF2DA27A07714CCD6D33648 /* .manus-84d0c627d0966aa6bf5bd5ba4e6d2c61.tmp */ = {isa = PBXFileReference; path = ".manus-84d0c627d0966aa6bf5bd5ba4e6d2c61.tmp"; sourceTree = "<group>"; };
-		AE01DB16E6476496940CEC9A /* .manus-d5270345f270abb94ae3d97bb8d26409.tmp */ = {isa = PBXFileReference; path = ".manus-d5270345f270abb94ae3d97bb8d26409.tmp"; sourceTree = "<group>"; };
 		B1B7A33AB40C3D8019F03AB9 /* FastingLogDurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingLogDurationTests.swift; sourceTree = "<group>"; };
 		B6CAFBC4153B5BB49E325BA9 /* SoftShowUpStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftShowUpStore.swift; sourceTree = "<group>"; };
 		C41B2AFA5736B4B7D5431B99 /* LegalDocuments.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalDocuments.swift; sourceTree = "<group>"; };
@@ -149,7 +132,6 @@
 		EFD4792EA146651BDA20E54F /* SoftShowUpCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftShowUpCopy.swift; sourceTree = "<group>"; };
 		F51F61B948652B9713B2ED9D /* FastingLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastingLogView.swift; sourceTree = "<group>"; };
 		FB0B7F28815D45D58E1CFB5D /* PandaPlateMidflowRevealArtwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateMidflowRevealArtwork.swift; sourceTree = "<group>"; };
-		FEFDB2158384539AD4249DA0 /* .manus-9c32781892f985e09fc0eb810c42e8c3.tmp */ = {isa = PBXFileReference; path = ".manus-9c32781892f985e09fc0eb810c42e8c3.tmp"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -158,8 +140,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				DB6830076ED0D47B30C40057 /* HealthKit.framework in Frameworks */,
-				E8E2891E25BFE545CA65F532 /* GoogleSignIn in Frameworks */,
-				A6B204A7AFBB2B060CFBD04B /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -198,19 +178,13 @@
 				F5F21A3DC6EAC6EE3BCB8AC3 /* UITests */,
 				F241AF1A9AA671ABEE72643E /* Frameworks */,
 				3DFCCFE51BA05B63B8E3D21F /* Products */,
+				AA11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy */,
 			);
 			sourceTree = "<group>";
 		};
 		5880C97FFE59759243B92088 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				79E389EBC2397B416323A204 /* .manus-0d6187a3043ed1c6223808d739babc70.tmp */,
-				7FCE05424A15183BBB5C2E92 /* .manus-3fc4a739b340f6ad3e63ec38741c7969.tmp */,
-				454A77377CC8FB838C1922F0 /* .manus-4a80f700465c9dcebe16a22f802f849f.tmp */,
-				FEFDB2158384539AD4249DA0 /* .manus-9c32781892f985e09fc0eb810c42e8c3.tmp */,
-				ACF2DA27A07714CCD6D33648 /* .manus-84d0c627d0966aa6bf5bd5ba4e6d2c61.tmp */,
-				84B5679402768361ED023092 /* .manus-75584b00db6e06845d1d642f064c4043.tmp */,
-				55F6CFBFCAAF603EDB23BDAF /* .manus-ca6f577c4bcf04d5426a404d5d2c3644.tmp */,
 				66E196419AB5EE9236019C98 /* AppStore.swift */,
 				8786DA115243BAB032702A48 /* BMICategory.swift */,
 				23EE35A193E86D26BFFFAE78 /* BoundedPhotoLoader.swift */,
@@ -274,8 +248,6 @@
 		F5F21A3DC6EAC6EE3BCB8AC3 /* UITests */ = {
 			isa = PBXGroup;
 			children = (
-				07D46D1DCFAEAA6058B2FAAE /* .manus-0e9ff5de457923a1c384d6425e5e2e60.tmp */,
-				AE01DB16E6476496940CEC9A /* .manus-d5270345f270abb94ae3d97bb8d26409.tmp */,
 				4422E542CF5F27E1A5B6B699 /* PandaPlateFlowTests.swift */,
 				595E6A6A5530A11B99504F44 /* PandaPlateRevisionUIAccessibilityTests.swift */,
 			);
@@ -299,8 +271,6 @@
 			);
 			name = PandaPlate;
 			packageProductDependencies = (
-				59508498BE87FFBFAF80077F /* GoogleSignIn */,
-				E712405EDE372CAE398AC560 /* GoogleSignInSwift */,
 			);
 			productName = PandaPlate;
 			productReference = 54D4F09317F1E7EEC0828CEC /* PandaPlate.app */;
@@ -367,7 +337,6 @@
 			mainGroup = 581F631AC1CA2B619DEF3B57;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				824C3224D15EF69678E596CF /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3DFCCFE51BA05B63B8E3D21F /* Products */;
@@ -386,13 +355,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				90F7E5FD34B3131E1F69085D /* .manus-0d6187a3043ed1c6223808d739babc70.tmp in Resources */,
-				8C7B38BDCCF666F403461105 /* .manus-3fc4a739b340f6ad3e63ec38741c7969.tmp in Resources */,
-				C454571412F32A7A1F608B74 /* .manus-4a80f700465c9dcebe16a22f802f849f.tmp in Resources */,
-				17D9721A52D68FFD0F713A26 /* .manus-75584b00db6e06845d1d642f064c4043.tmp in Resources */,
-				6672BDBCD830091D4DE4CF73 /* .manus-84d0c627d0966aa6bf5bd5ba4e6d2c61.tmp in Resources */,
-				8D50A3C059CEEB6D111B9F1F /* .manus-9c32781892f985e09fc0eb810c42e8c3.tmp in Resources */,
-				083B5DE4E73931748C2C2964 /* .manus-ca6f577c4bcf04d5426a404d5d2c3644.tmp in Resources */,
+				BB11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy in Resources */,
 				0FED0FA062EBDF6BDB0B76EE /* Assets.xcassets in Resources */,
 				B80590DDE89D3B4771D752F8 /* PipLife in Resources */,
 				D900DE33B5DC6C6C68A9DD2C /* pip_peek_swipe.gif in Resources */,
@@ -404,8 +367,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				31D8FD3B6CDC8D2B3B63B3A3 /* .manus-0e9ff5de457923a1c384d6425e5e2e60.tmp in Resources */,
-				ED77D4A67E1FD9F920032E92 /* .manus-d5270345f270abb94ae3d97bb8d26409.tmp in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -776,29 +737,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		824C3224D15EF69678E596CF /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 9.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		59508498BE87FFBFAF80077F /* GoogleSignIn */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 824C3224D15EF69678E596CF /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
-			productName = GoogleSignIn;
-		};
-		E712405EDE372CAE398AC560 /* GoogleSignInSwift */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 824C3224D15EF69678E596CF /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
-			productName = GoogleSignInSwift;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3D4B096CB3F97C8DCB795458 /* Project object */;
 }
