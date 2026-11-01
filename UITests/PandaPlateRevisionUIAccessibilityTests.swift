@@ -71,45 +71,56 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         XCTAssertTrue(app.buttons["Fasting"].exists)
     }
 
-    func testTenCupWaterLogAllowsSizeSelectionAndOneStepUndo() {
+    func testWaterLogAddsASizeInOneTapAndUndoesTheLastDrink() {
         let app = XCUIApplication()
         launchIntoHome(app)
         app.swipeUp()
 
-        let cup0 = app.buttons["waterCupSlot0"]
-        XCTAssertTrue(cup0.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["waterServingSize_smallCup"].exists)
-        XCTAssertTrue(app.buttons["waterServingSize_glass"].exists)
-        XCTAssertTrue(app.buttons["waterServingSize_bottle"].exists)
-        let undo = app.buttons["Undo last water change"]
+        let small = app.buttons["waterServingSize_smallCup"]
+        let glass = app.buttons["waterServingSize_glass"]
+        let bottle = app.buttons["waterServingSize_bottle"]
+        XCTAssertTrue(glass.waitForExistence(timeout: 5))
+        XCTAssertTrue(small.exists)
+        XCTAssertTrue(bottle.exists)
+        let undo = app.buttons["waterQuickLogUndo"]
         XCTAssertTrue(undo.exists)
+        XCTAssertEqual(app.staticTexts["waterDrinkCount"].label, "0 drinks logged")
 
-        cup0.tap()
+        glass.tap()
         XCTAssertTrue(undo.isEnabled)
         assertWaterTotal(250, in: app)
+        XCTAssertEqual(app.staticTexts["waterDrinkCount"].label, "1 drink logged")
         undo.tap()
         XCTAssertFalse(undo.isEnabled, "Undo should reverse only the latest edit.")
         XCTAssertEqual(undo.label, "Undo unavailable")
         assertWaterTotal(0, in: app)
+        XCTAssertEqual(app.staticTexts["waterDrinkCount"].label, "0 drinks logged")
 
-        app.buttons["waterServingSize_smallCup"].tap()
-        cup0.tap()
-        assertWaterTotal(150, in: app)
-        cup0.tap()
-        app.buttons["waterServingSize_bottle"].tap()
-        assertWaterTotal(500, in: app)
-
-        for index in 1..<10 {
-            let cup = app.buttons["waterCupSlot\(index)"]
-            XCTAssertTrue(cup.isEnabled)
-            cup.tap()
+        for _ in 0..<10 {
+            XCTAssertTrue(bottle.isEnabled)
+            bottle.tap()
         }
         assertWaterTotal(5_000, in: app)
-        XCTAssertTrue(app.staticTexts["10 of 10 cups · session total"].exists)
+        XCTAssertEqual(app.staticTexts["waterDrinkCount"].label, "10 drinks logged")
+        XCTAssertTrue(app.staticTexts["waterSessionFull"].exists)
+        XCTAssertFalse(small.isEnabled)
+        XCTAssertFalse(glass.isEnabled)
+        XCTAssertFalse(bottle.isEnabled)
         XCTAssertTrue(undo.isEnabled)
         undo.tap()
         assertWaterTotal(4_500, in: app)
+        XCTAssertEqual(app.staticTexts["waterDrinkCount"].label, "9 drinks logged")
+        XCTAssertFalse(app.staticTexts["waterSessionFull"].exists)
+        XCTAssertTrue(small.isEnabled)
         XCTAssertFalse(undo.isEnabled)
+
+        small.tap()
+        assertWaterTotal(4_650, in: app)
+        XCTAssertEqual(app.staticTexts["waterDrinkCount"].label, "10 drinks logged")
+        XCTAssertTrue(app.buttons["waterDrinkRemove9"].exists)
+        app.buttons["waterDrinkRemove9"].tap()
+        assertWaterTotal(4_500, in: app)
+        XCTAssertEqual(app.staticTexts["waterDrinkCount"].label, "9 drinks logged")
     }
 
     func testWorkoutAndFastingLogsAreAvailableFromLauncherAndStaySessionOnly() {
@@ -217,9 +228,13 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
     private func assertWaterTotal(_ amount: Int, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let unformattedAmount = "\(amount) ml"
         let formattedAmount = "\(amount.formatted()) ml"
-        let total = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@", unformattedAmount, formattedAmount)
-        ).firstMatch
-        XCTAssertTrue(total.waitForExistence(timeout: 5), "Expected water total to include \(amount) ml.", file: file, line: line)
+        let total = app.staticTexts["waterSessionTotal"]
+        XCTAssertTrue(total.waitForExistence(timeout: 5), "Expected the session water total.", file: file, line: line)
+        XCTAssertTrue(
+            total.label == unformattedAmount || total.label == formattedAmount,
+            "Expected water total \(formattedAmount), got \(total.label).",
+            file: file,
+            line: line
+        )
     }
 }

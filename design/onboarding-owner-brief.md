@@ -12,7 +12,7 @@ Owner: Nest · Implements: Lead · Verifies: Nest · Leads: Patrick
 - Patrick coding reveal on Mac (Cursor credits empty); Nest verifies in-group when it lands.
 - Follow **BitePal new-user video** (Patrick watching; beat notes TBD).
 - **Open → full-screen intro video only. No box-pop.** Retire `PandaPlateMidflowRevealArtwork` from reveal path.
-- Align question order + visuals to `docs/DESIGN_BOARD.png` **§01 Make it yours** and **§02 Find your rhythm**.
+- Align question order + visuals to `design/DESIGN_BOARD.png` **§01 Make it yours** and **§02 Find your rhythm**.
 - Honesty (Clear): plan/kcal on board = illustrative / not medical; scanner unavailable until secure proxy; session-only OK.
 
 ## Target order (board §01–02) — Nest verify checklist
@@ -56,4 +56,4 @@ Measurements: BitePal **wheel** pickers (system `Picker` `.wheel`) — Charlie/B
 ## Pointers
 Flow: `Sources/PandaPlateCategorizedOnboardingFlow.swift`
 Video: `Resources/red_panda_welcome_animation.mp4`
-Board: `docs/DESIGN_BOARD.png`
+Board: `design/DESIGN_BOARD.png`

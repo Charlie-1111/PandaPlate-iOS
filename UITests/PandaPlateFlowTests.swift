@@ -107,11 +107,11 @@ final class PandaPlateFlowTests: XCTestCase {
 
         app.buttons["Quick actions"].tap()
         app.buttons["Water"].tap()
-        let addCup = app.buttons.matching(identifier: "waterQuickLogAddCup").element(boundBy: 1)
+        let addCup = app.buttons.matching(identifier: "waterServingSize_glass").element(boundBy: 1)
         XCTAssertTrue(addCup.waitForExistence(timeout: 5))
         addCup.tap()
         XCTAssertTrue(app.staticTexts["250 ml"].exists)
-        let undoCup = app.buttons["waterQuickLogUndo"]
+        let undoCup = app.buttons.matching(identifier: "waterQuickLogUndo").element(boundBy: 1)
         XCTAssertTrue(undoCup.isEnabled)
         undoCup.tap()
         XCTAssertTrue(app.staticTexts["0 ml"].exists)
@@ -136,7 +136,7 @@ final class PandaPlateFlowTests: XCTestCase {
 
         app.buttons["Home"].tap()
         app.swipeUp()
-        let waterAction = app.buttons["waterQuickLogAddCup"]
+        let waterAction = app.buttons["waterServingSize_glass"]
         XCTAssertTrue(waterAction.waitForExistence(timeout: 5))
         XCTAssertGreaterThanOrEqual(waterAction.frame.height, 44)
         waterAction.tap()

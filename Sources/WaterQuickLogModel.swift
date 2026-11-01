@@ -27,7 +27,7 @@ enum WaterServingSize: String, CaseIterable, Identifiable {
     var example: String { "\(milliliters) ml" }
 }
 
-/// Helpers for the ten tappable water slots. This is a log, not a hydration target.
+/// Helpers for the session water log. Up to ten drinks. This is a log, not a hydration target.
 enum WaterQuickLogModel {
     static let maximumCups = 10
     static let allowedServingSizes = Set(WaterServingSize.allCases.map(\.milliliters))

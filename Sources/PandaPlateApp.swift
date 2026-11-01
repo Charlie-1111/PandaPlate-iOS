@@ -1,5 +1,4 @@
 import SwiftUI
-import GoogleSignIn
 
 @main
 struct PandaPlateApp: App {
@@ -7,10 +6,6 @@ struct PandaPlateApp: App {
     @Environment(\.scenePhase) private var scenePhase
     /// Driven by onboarding welcome via PreferenceKey — hides battery/Wi‑Fi/signal there only.
     @State private var hideStatusBar = false
-
-    init() {
-        Self.configureGoogleSignInIfNeeded()
-    }
 
     var body: some Scene {
         WindowGroup {
@@ -42,11 +37,7 @@ struct PandaPlateApp: App {
                         }
                 }
             }
-            .onOpenURL { url in
-                GIDSignIn.sharedInstance.handle(url)
-            }
             .onAppear {
-                Self.configureGoogleSignInIfNeeded()
                 // Presence means they opened the app — never require a meal or Pip ritual to avoid a no-show.
                 SoftShowUpStore.shared.markSeen()
                 PipHeartsStore.shared.refreshDecayIfNeeded(showUpDays: SoftShowUpStore.shared.days)
@@ -59,16 +50,5 @@ struct PandaPlateApp: App {
             .onPreferenceChange(PandaPlateStatusBarHiddenPreferenceKey.self) { hideStatusBar = $0 }
             .statusBarHidden(hideStatusBar)
         }
-    }
-
-    /// Reads `GIDClientID` from Info.plist / Bundle so Charlie can paste one value later without code edits.
-    private static func configureGoogleSignInIfNeeded() {
-        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
-              !clientID.isEmpty,
-              !clientID.contains("REPLACE_WITH_GOOGLE") else {
-            // Placeholder still in place — leave unconfigured; UI shows a clear message on tap.
-            return
-        }
-        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
     }
 }

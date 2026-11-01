@@ -52,11 +52,9 @@ struct PandaPlateOnboardingDraft {
     var estimatedReachDate: Date?
     var estimatedReachSkippedUnder18 = false
 
-    // Account (Sign in with Apple / Google) — optional, session-only
+    // Sign in with Apple — session-only. No PandaPlate server account is created.
     var appleUserIdentifier: String?
     var appleEmail: String?
-    var googleUserIdentifier: String?
-    var googleEmail: String?
     var continuedWithoutAccount = false
 
     var sanitizedCompanionName: String {

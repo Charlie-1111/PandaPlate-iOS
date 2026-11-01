@@ -1,9 +1,7 @@
 import SwiftUI
-import UIKit
 import UserNotifications
 import StoreKit
 import AuthenticationServices
-import GoogleSignIn
 
 /// A drop-in onboarding flow. It owns only temporary UI state; the host decides what to store.
 /// It does not edit AppStore, Home/navigation, health data, meals, or nutrition calculations.
@@ -34,7 +32,6 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     @State private var notificationRequestBusy = false
     @ObservedObject private var healthSync = HealthKitActivitySync.shared
     @State private var appleSignInError: String?
-    @State private var googleSignInError: String?
     @FocusState private var focusedField: Field?
     @Environment(\.requestReview) private var requestReview
 
@@ -211,7 +208,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     }
 
     private var hasSignedInAccount: Bool {
-        draft.appleUserIdentifier != nil || draft.googleUserIdentifier != nil
+        draft.appleUserIdentifier != nil
     }
 
     private var requiredMeasurementMissing: Bool {
@@ -400,7 +397,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .extraGoals: "Pick at least one. These notes don’t change calculations."
         case .trackingExperience: "This just helps set the tone. Nothing is judged or scored."
         case .smallStepsIntro: "A neutral overview of what this setup asks. No outcome claims or targets."
-        case .fastingFamiliarity: "Just a familiarity question. No schedule or recommendation follows."
+        case .fastingFamiliarity: "Yes keeps fasting on your Home plan. No leaves it off the plan."
         case .fastingContext: "PandaPlate won’t set a fasting target or give fasting advice."
         case .pipTeaser: "Gamification makes habits stick for up 5x longer."
         case .pipReveal: "Swipe up to meet Pip. Continue when you’re ready."
@@ -410,17 +407,17 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .toneInterstitial: "Pip can be kind and encouraging without keeping score."
         case .reminders: "Pick one. Next we’ll ask iOS for notification permission if you want reminders."
         case .routineIntro: "A few short questions help describe your usual rhythm."
-        case .mealsPerDay: "A reference point, not a target or prescription."
+        case .mealsPerDay: "Home counts logs against this number. It is a rhythm, not a calorie target."
         case .mealWindow: "Choose first and last meal times (24-hour). Both are required."
         case .fastingSchedule: "Note your current routine. No schedule or recommendation is created."
         case .eatingLocations: "Choose any that fit. Your routine can vary day to day."
-        case .dietPreference: "Pick a preference; no meal plan is calculated."
+        case .dietPreference: "Home reminds you of this when you log. It does not build a menu or calorie plan."
         case .foodRestrictions: "Pick any that apply (or No restrictions). Not an allergy check or safety guarantee."
-        case .waterAdequacy: "Required. There’s no right answer and no hydration target is calculated."
-        case .habitChanges: "Choose at least one. These answers don’t create targets."
+        case .waterAdequacy: "This changes the water note on Home. No hydration amount is calculated."
+        case .habitChanges: "This becomes today’s focus on Home. It is not a calorie target."
         case .weekendEating: "Required context. It isn’t scored or used for calorie calculations."
         case .cravings: "Required context; there’s no judgment or score."
-        case .activityLevel: "Required context; it doesn’t change calorie estimates in this version."
+        case .activityLevel: "This changes the movement note on Home. It does not calculate calories."
         case .connectHealth: "Optional. Read steps, active energy, exercise time, and workouts. Skip is fine — Finish never blocks on Health."
         case .activityCalorieMode: "Preference only — stored for later personalization, not a live calorie budget."
         case .attribution: "Pick one. This stays in the setup session only."
@@ -429,13 +426,13 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .height: "Required · centimetres · no BMI or daily calorie target is shown."
         case .currentWeight: "Required · kilograms · no BMI or daily calorie target is shown."
         case .targetWeight: "Required · kg or lbs (wheels rematch the unit) · pace and a simple date estimate come next."
-        case .goalPace: "Choose a pace. This is a preference, not a prescription."
+        case .goalPace: "If you are 18 or older, Home keeps this date estimate. It is not a prescription."
         case .weightProjection: "A linear estimate only — not medical advice. No BMI or calorie targets."
         case .planBuilding: "Gathering your answers. No fake macros or calorie plan."
         case .finish: "Review your answers. No nutrition target, BMI, or macros are calculated."
         case .rateApp: "Optional. A soft thank-you — Apple may show a rating prompt once."
         case .softPaywall: "Optional Premium for extra Pip looks, show-up history, and session export. Free remains usable."
-        case .account: "Sign in with Apple or Google to finish setup. An account is required."
+        case .account: "Sign in with Apple to finish setup. No PandaPlate server account is created."
         case .welcome: "Start with one small step that feels right for you."
         }
     }
@@ -537,7 +534,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .smallStepsIntro:
             reassuranceCards([
                 ("A few preferences", "This setup asks about a handful of choices.", "list.bullet"),
-                ("No outcome claims", "These answers do not calculate a nutrition plan.", "info.circle.fill"),
+                ("Your Home plan", "These answers set today’s rhythm, Pip’s voice, and which tools stay on the plan. They do not calculate calories.", "info.circle.fill"),
                 ("You stay in control", "You can review your answers before finishing.", "hand.raised.fill")
             ])
         case .fastingFamiliarity:
@@ -1041,6 +1038,16 @@ struct PandaPlateCategorizedOnboardingFlow: View {
 
     private var setupReview: some View {
         VStack(alignment: .leading, spacing: 11) {
+            Text("This is the plan Home will use")
+                .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                .foregroundStyle(PPColor.ink)
+            Text(draft.sessionPlan.pipLine)
+                .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
+                .foregroundStyle(PPColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(draft.sessionPlan.items) { item in
+                recapCard(item.title, value: item.detail, symbol: item.symbol)
+            }
             recapCard("Main focus", value: draft.goal.rawValue, symbol: "sparkles")
             recapCard("Pip’s style", value: draft.pipStyle.rawValue, symbol: "heart.fill")
             recapCard("Pip calls you", value: draft.sanitizedUserName, symbol: "person.fill")
@@ -1116,7 +1123,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             .accessibilityLabel(primaryTitle)
             .accessibilityHint(
                 step == .account && requiredMeasurementMissing
-                ? "Sign in with Apple or Google to finish setup."
+                ? "Sign in with Apple to finish setup."
                 : (requiredMeasurementMissing ? "Choose an answer to continue — every question is required." : "")
             )
             if let skipTitle = step.skipTitle {
@@ -2096,7 +2103,21 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     }
                 }
 
-                Text("Setup personalization only — not lab metabolism or a calorie prescription.")
+                Text(draft.sessionPlan.pipLine)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(draft.sessionPlan.items.prefix(4)) { item in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: item.symbol)
+                            .foregroundStyle(PPColor.coralInk)
+                        Text(item.detail)
+                            .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Text("This is the Home plan. Not lab metabolism or a calorie prescription.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -2305,7 +2326,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                             .multilineTextAlignment(.center)
                             .padding(.top, 12)
 
-                        Text("Sign in with Apple or Google to finish setup. An account is required.")
+                        Text("Sign in with Apple to finish setup. This stays on this device. Clear this session in Settings removes it. No PandaPlate server account is created.")
                             .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.muted)
                             .multilineTextAlignment(.center)
@@ -2334,7 +2355,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     .disabled(!hasSignedInAccount)
                     .opacity(hasSignedInAccount ? 1 : 0.45)
                     .accessibilityLabel(hasSignedInAccount ? "Enter PandaPlate" : "Sign in to continue")
-                    .accessibilityHint(hasSignedInAccount ? "" : "Sign in with Apple or Google to finish setup.")
+                    .accessibilityHint(hasSignedInAccount ? "" : "Sign in with Apple to finish setup.")
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, 8)
@@ -2363,36 +2384,10 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 .frame(maxWidth: .infinity, minHeight: 56)
                 .clipShape(Capsule())
                 .accessibilityLabel("Sign in with Apple")
-
-                // Visual twin of SignInWithAppleButton: full-width capsule, centered icon+label.
-                Button(action: startGoogleSignIn) {
-                    HStack(spacing: 10) {
-                        Spacer(minLength: 0)
-                        Image(systemName: "g.circle.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
-                            .accessibilityHidden(true)
-                        Text("Continue with Google")
-                            .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                            .foregroundStyle(PPColor.ink)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                    .background(Color.white, in: Capsule())
-                    .overlay(Capsule().stroke(PPColor.line.opacity(0.9), lineWidth: 1))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Continue with Google")
             }
 
             if let appleSignInError {
                 Text(appleSignInError)
-                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.coralInk)
-            }
-            if let googleSignInError {
-                Text(googleSignInError)
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.coralInk)
             }
@@ -2402,10 +2397,10 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(PPColor.coralInk)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(draft.appleUserIdentifier != nil ? "Signed in with Apple" : "Signed in with Google")
+                        Text("Signed in with Apple")
                             .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.ink)
-                        if let email = (draft.appleEmail ?? draft.googleEmail), !email.isEmpty {
+                        if let email = draft.appleEmail, !email.isEmpty {
                             Text(email)
                                 .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                                 .foregroundStyle(PPColor.muted)
@@ -2438,68 +2433,8 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 appleSignInError = nil
                 return
             }
-            appleSignInError = "Sign in with Apple couldn’t finish. Try again, or use Google."
+            appleSignInError = "Sign in with Apple couldn’t finish. Try again."
         }
-    }
-
-    private func startGoogleSignIn() {
-        googleSignInError = nil
-        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
-              !clientID.isEmpty else {
-            googleSignInError = "Google Sign-In needs a Client ID in Info.plist (GIDClientID)."
-            return
-        }
-        if clientID.contains("REPLACE_WITH_GOOGLE") {
-            googleSignInError = "Google Sign-In needs a Client ID. Paste your iOS OAuth Client ID into Info.plist (GIDClientID) and set the URL scheme to the reversed client id from Google Cloud Console."
-            return
-        }
-
-        // Ensure configuration is set from Bundle (single source of truth).
-        if GIDSignIn.sharedInstance.configuration == nil {
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-        }
-
-        guard let presenter = Self.topPresentingViewController() else {
-            googleSignInError = "Couldn’t open Google Sign-In. Try again, or use Apple."
-            return
-        }
-
-        GIDSignIn.sharedInstance.signIn(withPresenting: presenter) { result, error in
-            DispatchQueue.main.async {
-                if let error {
-                    let ns = error as NSError
-                    // User cancel — soft.
-                    if ns.domain == "com.google.GIDSignIn", ns.code == -5 {
-                        googleSignInError = nil
-                        return
-                    }
-                    googleSignInError = "Google Sign-In couldn’t finish. Try again, or use Apple."
-                    return
-                }
-                guard let user = result?.user else {
-                    googleSignInError = "Google Sign-In didn’t return a usable account. Try again, or use Apple."
-                    return
-                }
-                draft.googleUserIdentifier = user.userID
-                if let email = user.profile?.email, !email.isEmpty {
-                    draft.googleEmail = email
-                }
-                draft.continuedWithoutAccount = false
-                googleSignInError = nil
-            }
-        }
-    }
-
-    /// Active window scene root for `GIDSignIn.sharedInstance.signIn(withPresenting:)`.
-    private static func topPresentingViewController() -> UIViewController? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let active = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
-        let window = active?.windows.first(where: \.isKeyWindow) ?? active?.windows.first
-        var top = window?.rootViewController
-        while let presented = top?.presentedViewController {
-            top = presented
-        }
-        return top
     }
 
     private func refreshWeightProjectionEstimate() {

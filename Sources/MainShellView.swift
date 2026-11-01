@@ -470,7 +470,7 @@ private struct TodayDashboard: View {
     private var sessionSummary: some View {
         VStack(spacing: 9) {
             HStack(spacing: 9) {
-                sessionSummaryItem("Meals", value: "\(store.meals.count) this session", symbol: "fork.knife")
+                sessionSummaryItem("Meals", value: "\(store.meals.count) of \(store.sessionPlan.mealRhythm) you chose", symbol: "fork.knife")
                 sessionSummaryItem("Water", value: "\(store.waterML) ml this session", symbol: "drop.fill")
             }
             healthStepsSummary
@@ -535,8 +535,8 @@ private struct TodayDashboard: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionTitle(title: "Quick actions")
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 9) {
-                quickAction("Food", symbol: "camera.fill", detail: "Opens camera to scan", action: onScanTap)
-                quickAction("Quick log", symbol: "plus.circle.fill", detail: "Food, water, workout, weight, fasting", action: onQuickLogTap)
+                quickAction("Food", symbol: "camera.fill", detail: store.sessionPlan.foodReminder ?? "Opens camera to scan", action: onScanTap)
+                quickAction("Quick log", symbol: "plus.circle.fill", detail: store.sessionPlan.showsFasting ? "Food, water, workout, fasting" : "Food, water, workout, weight", action: onQuickLogTap)
             }
         }
     }
@@ -709,26 +709,43 @@ private struct TodayDashboard: View {
     }
 
     private var missionCard: some View {
-        Button(action: onQuickLogTap) {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(PPColor.coral)
-                    .frame(width: 42, height: 42)
-                    .background(PPColor.peach, in: RoundedRectangle(cornerRadius: 14))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Quick log")
-                        .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption)).foregroundStyle(PPColor.ink)
-                    Text("Meal, water, workout or fasting")
-                        .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2)).foregroundStyle(PPColor.muted)
+        let plan = store.sessionPlan
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(plan.title)
+                .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .body))
+                .foregroundStyle(PPColor.ink)
+            Text("From your setup. Not a calorie plan.")
+                .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                .foregroundStyle(PPColor.muted)
+            ForEach(plan.items) { item in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: item.symbol)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(PPColor.coralInk)
+                        .frame(width: 22)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title)
+                            .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.ink)
+                        Text(item.detail)
+                            .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                            .foregroundStyle(PPColor.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(PPColor.muted)
             }
-            .padding(13)
-            .background(PPColor.mint.opacity(0.48), in: RoundedRectangle(cornerRadius: 19))
+            Button(action: onQuickLogTap) {
+                Text("Log toward this plan")
+                    .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(PPColor.coralInk, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens quick log using the routine from setup")
         }
-        .buttonStyle(.plain)
+        .padding(14)
+        .background(PPColor.mint.opacity(0.48), in: RoundedRectangle(cornerRadius: 19, style: .continuous))
     }
 
     private func nutritionChip(_ title: String, _ value: String, color: Color) -> some View {
@@ -750,12 +767,6 @@ private struct PipWorldDashboard: View {
     @ObservedObject private var lookStore = PipLookStore.shared
     @ObservedObject private var heartsStore = PipHeartsStore.shared
 
-    private static let greetings = [
-        "What sounds good right now?",
-        "No rush. One small step.",
-    ]
-
-    @State private var greetingIndex = 0
     @State private var phase: PipRitualPhase = .welcome
     @State private var celebrateLove = false
     @State private var showLookPaywall = false
@@ -766,7 +777,7 @@ private struct PipWorldDashboard: View {
     }
 
     private var greetingLine: String {
-        Self.greetings[greetingIndex % Self.greetings.count]
+        store.sessionPlan.pipLine
     }
 
     private var softResponse: String {
@@ -1027,7 +1038,6 @@ private struct PipWorldDashboard: View {
     }
 
     private func rotateGreetingOnAppear() {
-        greetingIndex = Int.random(in: 0..<Self.greetings.count)
         if phase == .napping { return }
         if phase != .saidHi {
             phase = .welcome
@@ -1048,7 +1058,6 @@ private struct PipWorldDashboard: View {
     }
 
     private func wakeGently() {
-        greetingIndex = Int.random(in: 0..<Self.greetings.count)
         phase = .welcome
     }
 }
@@ -1319,6 +1328,9 @@ private struct ProfileView: View {
     #if DEBUG
     @State private var showAdvancedDeveloper = false
     @State private var scanBaseURLDraft = UserDefaults.standard.string(forKey: FoodScanClient.baseURLDefaultsKey) ?? FoodScanClient.defaultBaseURL
+    @State private var scanTokenDraft = ""
+    @State private var scanTokenSaved = FoodScanClient.configuredScanToken != nil
+    @State private var scanURLError: String?
     #endif
     @State private var presentedLegalDocument: PandaPlateLegal.Document? = nil
     @State private var notificationAuthStatus: UNAuthorizationStatus = .notDetermined
@@ -1738,7 +1750,7 @@ private struct ProfileView: View {
                 Label("Your data stays here", systemImage: "lock.fill")
                     .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(PPColor.ink)
-                Text("Meals, photos, water and preferences stay in memory only and reset when the app closes. Nothing syncs to an account or cloud.")
+                Text("Meals, photos, water and preferences stay in memory only and reset when the app closes. Nothing syncs to an account or cloud. Clear this session also removes the Sign in with Apple identifier from this device.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
                 PandaPlateLegalLinksRow(style: .profile, presentedDocument: $presentedLegalDocument)
@@ -1755,7 +1767,7 @@ private struct ProfileView: View {
                     .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.ink)
                     .padding(.top, 8)
-                Text("Device → Mac LAN: set http://<Mac-LAN-IP>:8787 (Simulator can keep 127.0.0.1). Server must bind 0.0.0.0.")
+                Text("Simulator stays on 127.0.0.1. A device on your LAN can use a private address only. The server must stay on loopback unless PANDAPLATE_ALLOW_LAN=1 and a scan token of at least 24 characters are set. Public hosts are rejected.")
                     .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(PPColor.muted)
                 TextField("http://127.0.0.1:8787", text: $scanBaseURLDraft)
@@ -1765,26 +1777,57 @@ private struct ProfileView: View {
                     .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
                     .padding(12)
                     .background(PPColor.cream, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                SecureField("Scan token (leave empty on loopback)", text: $scanTokenDraft)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .padding(12)
+                    .background(PPColor.cream, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                if let scanURLError {
+                    Text(scanURLError)
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.coralInk)
+                }
                 Button {
                     let trimmed = scanBaseURLDraft.trimmingCharacters(in: .whitespacesAndNewlines)
                     if trimmed.isEmpty {
                         UserDefaults.standard.removeObject(forKey: FoodScanClient.baseURLDefaultsKey)
                         scanBaseURLDraft = FoodScanClient.defaultBaseURL
-                    } else {
+                        scanURLError = nil
+                    } else if FoodScanClient.isPrivateScanBaseURL(trimmed) {
                         UserDefaults.standard.set(trimmed, forKey: FoodScanClient.baseURLDefaultsKey)
                         scanBaseURLDraft = trimmed
+                        scanURLError = nil
+                    } else {
+                        scanURLError = "That address isn’t a loopback or private LAN host, so it wasn’t saved."
+                    }
+                    let token = scanTokenDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !token.isEmpty {
+                        UserDefaults.standard.set(token, forKey: FoodScanClient.scanTokenDefaultsKey)
+                        scanTokenDraft = ""
+                        scanTokenSaved = true
                     }
                 } label: {
-                    Text("Save scan base URL")
+                    Text("Save scan server")
                         .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background(PPColor.coralInk, in: Capsule())
                 }
                 .buttonStyle(.plain)
-                Text("Active: \(FoodScanClient.configuredBaseURL.absoluteString)")
+                Text("Active: \(FoodScanClient.configuredBaseURL.absoluteString). Token: \(scanTokenSaved ? "saved" : "not set"). Leave the token blank to keep the saved one.")
                     .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(PPColor.muted)
+                if scanTokenSaved {
+                    Button("Remove saved token") {
+                        UserDefaults.standard.removeObject(forKey: FoodScanClient.scanTokenDefaultsKey)
+                        scanTokenDraft = ""
+                        scanTokenSaved = false
+                    }
+                    .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.coralInk)
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.bottom, 4)
         } label: {
@@ -1866,6 +1909,13 @@ private struct LogMealSheet: View {
                     HStack(spacing: 8) {
                         entryModeButton(.manual, title: "Manual", symbol: "square.and.pencil")
                         entryModeButton(.photo, title: "Photo note", symbol: "photo")
+                    }
+                }
+                if let reminder = store.sessionPlan.foodReminder {
+                    Section("From your setup") {
+                        Text(reminder)
+                            .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.muted)
                     }
                 }
                 Section("Meal type") {
@@ -2069,7 +2119,7 @@ private struct QuickLogSheet: View {
             ActionTile(id: "food", title: "Food", subtitle: "Camera → log", symbol: "camera.fill",
                        tint: Color(red: 0.22, green: 0.55, blue: 0.32),
                        fill: Color(red: 0.82, green: 0.93, blue: 0.84)),
-            ActionTile(id: "water", title: "Water", subtitle: "Add a glass", symbol: "drop.fill",
+            ActionTile(id: "water", title: "Water", subtitle: store.sessionPlan.emphasizesWater ? "On your plan" : "Optional check-in", symbol: "drop.fill",
                        tint: Color(red: 0.20, green: 0.48, blue: 0.90),
                        fill: Color(red: 0.82, green: 0.90, blue: 0.98)),
             ActionTile(id: "workout", title: "Workout", subtitle: "Log activity", symbol: "figure.walk",
@@ -2117,7 +2167,7 @@ private struct QuickLogSheet: View {
                         }
                     }
 
-                    // Secondary BitePal-adjacent action
+                    if store.sessionPlan.showsFasting {
                     Button {
                         dismiss()
                         onFasting()
@@ -2132,7 +2182,7 @@ private struct QuickLogSheet: View {
                                 Text("Fasting")
                                     .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
                                     .foregroundStyle(PPColor.ink)
-                                Text("Optional elapsed-time log")
+                                Text("On your plan · elapsed time only")
                                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                                     .foregroundStyle(PPColor.muted)
                             }
@@ -2146,8 +2196,11 @@ private struct QuickLogSheet: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Fasting")
+                    }
 
-                    Text("Food opens the camera. Workout kcal shows only from Apple Health when synced — otherwise Unknown (blank is not zero).")
+                    Text(store.sessionPlan.showsFasting
+                         ? "Fasting is on your plan because of your setup answers. Workout kcal shows only from Apple Health when synced."
+                         : "Fasting stays off your plan. Workout kcal shows only from Apple Health when synced — otherwise Unknown.")
                         .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
                         .foregroundStyle(PPColor.muted)
                 }
