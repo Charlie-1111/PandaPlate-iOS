@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DD55E5100001SESSIONPLAN01 /* SessionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC55E5100001SESSIONPLAN01 /* SessionPlan.swift */; };
 		BB11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AA11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy */; };
 		0CA4E5F2234683D82377E282 /* BMICategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8786DA115243BAB032702A48 /* BMICategory.swift */; };
 		0FED0FA062EBDF6BDB0B76EE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 30ECF3B56BE4A6E3003B1A36 /* Assets.xcassets */; };
@@ -78,6 +79,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		CC55E5100001SESSIONPLAN01 /* SessionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPlan.swift; sourceTree = "<group>"; };
 		AA11CE0001PRIVACYINFO0001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		04458D4223793CA3DAFCFBFB /* PandaPlateOnboardingDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateOnboardingDraft.swift; sourceTree = "<group>"; };
 		14C9C3B3A4EEDF2B482B53D2 /* WaterQuickLogModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterQuickLogModel.swift; sourceTree = "<group>"; };
@@ -213,6 +215,7 @@
 				951CEA1E09C3D16A71F94656 /* PipRevealAnimationView.swift */,
 				384E714AD5EE50129AF9C3FD /* PremiumAccess.swift */,
 				CBF9C3BC62B3F5A118ABDE76 /* ReminderNotifications.swift */,
+				CC55E5100001SESSIONPLAN01 /* SessionPlan.swift */,
 				999FD078E8A9204443220A88 /* ScanQuotaStore.swift */,
 				EFD4792EA146651BDA20E54F /* SoftShowUpCopy.swift */,
 				B6CAFBC4153B5BB49E325BA9 /* SoftShowUpStore.swift */,
@@ -405,6 +408,7 @@
 				250FA9EE2213F88083C78D6C /* PipRevealAnimationView.swift in Sources */,
 				2C51984DF19C8DA4787F6DCC /* PremiumAccess.swift in Sources */,
 				9E4A9E63449CB7C1EE3BF744 /* ReminderNotifications.swift in Sources */,
+				DD55E5100001SESSIONPLAN01 /* SessionPlan.swift in Sources */,
 				523312B39E07EF311F28B953 /* ScanQuotaStore.swift in Sources */,
 				7BE72AAAC7C90A9591D311FE /* SoftShowUpCopy.swift in Sources */,
 				7C22C589F6457C4C23C782D4 /* SoftShowUpStore.swift in Sources */,

@@ -21,10 +21,10 @@ struct WaterQuickLogView: View {
                             .font(.system(size: 25, weight: .bold, design: .rounded, relativeTo: .title2))
                             .foregroundStyle(PPColor.ink)
                             .contentTransition(.numericText())
-                        Text("\(filledCount) of \(WaterQuickLogModel.maximumCups) cups · session total")
+                        Text(store.sessionPlan.waterCaption)
                             .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                             .foregroundStyle(PPColor.muted)
-                            .accessibilityLabel("\(filledCount) of 10 cups logged. Session total, \(totalML.formatted()) milliliters.")
+                            .accessibilityLabel("\(store.sessionPlan.waterCaption) \(filledCount) of 10 cups logged. Session total, \(totalML.formatted()) milliliters.")
                     }
                     Spacer(minLength: 0)
                 }

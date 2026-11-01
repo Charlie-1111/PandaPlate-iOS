@@ -397,7 +397,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .extraGoals: "Pick at least one. These notes don’t change calculations."
         case .trackingExperience: "This just helps set the tone. Nothing is judged or scored."
         case .smallStepsIntro: "A neutral overview of what this setup asks. No outcome claims or targets."
-        case .fastingFamiliarity: "Just a familiarity question. No schedule or recommendation follows."
+        case .fastingFamiliarity: "Yes keeps fasting on your Home plan. No leaves it off the plan."
         case .fastingContext: "PandaPlate won’t set a fasting target or give fasting advice."
         case .pipTeaser: "Gamification makes habits stick for up 5x longer."
         case .pipReveal: "Swipe up to meet Pip. Continue when you’re ready."
@@ -407,17 +407,17 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .toneInterstitial: "Pip can be kind and encouraging without keeping score."
         case .reminders: "Pick one. Next we’ll ask iOS for notification permission if you want reminders."
         case .routineIntro: "A few short questions help describe your usual rhythm."
-        case .mealsPerDay: "A reference point, not a target or prescription."
+        case .mealsPerDay: "Home counts logs against this number. It is a rhythm, not a calorie target."
         case .mealWindow: "Choose first and last meal times (24-hour). Both are required."
         case .fastingSchedule: "Note your current routine. No schedule or recommendation is created."
         case .eatingLocations: "Choose any that fit. Your routine can vary day to day."
-        case .dietPreference: "Pick a preference; no meal plan is calculated."
+        case .dietPreference: "Home reminds you of this when you log. It does not build a menu or calorie plan."
         case .foodRestrictions: "Pick any that apply (or No restrictions). Not an allergy check or safety guarantee."
-        case .waterAdequacy: "Required. There’s no right answer and no hydration target is calculated."
-        case .habitChanges: "Choose at least one. These answers don’t create targets."
+        case .waterAdequacy: "This changes the water note on Home. No hydration amount is calculated."
+        case .habitChanges: "This becomes today’s focus on Home. It is not a calorie target."
         case .weekendEating: "Required context. It isn’t scored or used for calorie calculations."
         case .cravings: "Required context; there’s no judgment or score."
-        case .activityLevel: "Required context; it doesn’t change calorie estimates in this version."
+        case .activityLevel: "This changes the movement note on Home. It does not calculate calories."
         case .connectHealth: "Optional. Read steps, active energy, exercise time, and workouts. Skip is fine — Finish never blocks on Health."
         case .activityCalorieMode: "Preference only — stored for later personalization, not a live calorie budget."
         case .attribution: "Pick one. This stays in the setup session only."
@@ -426,7 +426,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .height: "Required · centimetres · no BMI or daily calorie target is shown."
         case .currentWeight: "Required · kilograms · no BMI or daily calorie target is shown."
         case .targetWeight: "Required · kg or lbs (wheels rematch the unit) · pace and a simple date estimate come next."
-        case .goalPace: "Choose a pace. This is a preference, not a prescription."
+        case .goalPace: "If you are 18 or older, Home keeps this date estimate. It is not a prescription."
         case .weightProjection: "A linear estimate only — not medical advice. No BMI or calorie targets."
         case .planBuilding: "Gathering your answers. No fake macros or calorie plan."
         case .finish: "Review your answers. No nutrition target, BMI, or macros are calculated."
@@ -534,7 +534,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .smallStepsIntro:
             reassuranceCards([
                 ("A few preferences", "This setup asks about a handful of choices.", "list.bullet"),
-                ("No outcome claims", "These answers do not calculate a nutrition plan.", "info.circle.fill"),
+                ("Your Home plan", "These answers set today’s rhythm, Pip’s voice, and which tools stay on the plan. They do not calculate calories.", "info.circle.fill"),
                 ("You stay in control", "You can review your answers before finishing.", "hand.raised.fill")
             ])
         case .fastingFamiliarity:
@@ -1038,6 +1038,16 @@ struct PandaPlateCategorizedOnboardingFlow: View {
 
     private var setupReview: some View {
         VStack(alignment: .leading, spacing: 11) {
+            Text("This is the plan Home will use")
+                .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                .foregroundStyle(PPColor.ink)
+            Text(draft.sessionPlan.pipLine)
+                .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
+                .foregroundStyle(PPColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(draft.sessionPlan.items) { item in
+                recapCard(item.title, value: item.detail, symbol: item.symbol)
+            }
             recapCard("Main focus", value: draft.goal.rawValue, symbol: "sparkles")
             recapCard("Pip’s style", value: draft.pipStyle.rawValue, symbol: "heart.fill")
             recapCard("Pip calls you", value: draft.sanitizedUserName, symbol: "person.fill")
@@ -2093,7 +2103,21 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     }
                 }
 
-                Text("Setup personalization only — not lab metabolism or a calorie prescription.")
+                Text(draft.sessionPlan.pipLine)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(draft.sessionPlan.items.prefix(4)) { item in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: item.symbol)
+                            .foregroundStyle(PPColor.coralInk)
+                        Text(item.detail)
+                            .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Text("This is the Home plan. Not lab metabolism or a calorie prescription.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)

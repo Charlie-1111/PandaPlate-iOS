@@ -5,6 +5,78 @@ import UIKit
 
 @MainActor
 final class PandaPlateSafetyTests: XCTestCase {
+    func testOnboardingAnswersChangeTheHomePlan() {
+        var quiet = SessionPlanInput()
+        quiet.fastingFamiliarity = "No"
+        quiet.fastingSchedulePreference = "Not currently"
+        quiet.waterAdequacy = "Yes"
+        quiet.dietPreference = nil
+        quiet.pipStyle = .gentle
+        quiet.goal = .maintain
+        let quietPlan = SessionPlanBuilder.make(quiet, now: Date(timeIntervalSince1970: 1_762_000_000), calendar: gregorianMonday())
+        XCTAssertFalse(quietPlan.showsFasting)
+        XCTAssertFalse(quietPlan.emphasizesWater)
+        XCTAssertNil(quietPlan.foodReminder)
+        XCTAssertEqual(quietPlan.title, "A steady rhythm")
+        XCTAssertTrue(quietPlan.pipLine.contains("No rush"))
+
+        var active = SessionPlanInput()
+        active.goal = .change
+        active.pipStyle = .cheerleader
+        active.companionName = "Miso"
+        active.loggingFamiliarity = "I log regularly"
+        active.fastingFamiliarity = "Yes"
+        active.mealsPerDay = 2
+        active.firstMealTime = "08:00"
+        active.lastMealTime = "19:00"
+        active.dietPreference = "Vegetarian"
+        active.foodRestrictions = ["Dairy"]
+        active.waterAdequacy = "No"
+        active.habitChanges = ["More vegetables"]
+        active.mealPlaces = ["Cook at home"]
+        active.mealsLogged = 1
+        active.ageYears = 30
+        active.currentWeightKilograms = 70
+        active.targetWeightKilograms = 68
+        active.goalPace = "Slow"
+        active.estimatedReachDate = Date(timeIntervalSince1970: 1_800_000_000)
+        let activePlan = SessionPlanBuilder.make(active, now: Date(timeIntervalSince1970: 1_762_000_000), calendar: gregorianMonday())
+        XCTAssertTrue(activePlan.showsFasting)
+        XCTAssertTrue(activePlan.emphasizesWater)
+        XCTAssertEqual(activePlan.mealRhythm, 2)
+        XCTAssertEqual(activePlan.foodReminder?.contains("Vegetarian"), true)
+        XCTAssertEqual(activePlan.foodReminder?.contains("Dairy"), true)
+        XCTAssertTrue(activePlan.pipLine.contains("Miso"))
+        XCTAssertTrue(activePlan.items.contains { $0.id == "meals" && $0.title == "1 of 2 meals" })
+        XCTAssertTrue(activePlan.items.contains { $0.id == "habit" })
+        XCTAssertTrue(activePlan.items.contains { $0.id == "pace" })
+        XCTAssertFalse(activePlan.items.contains { $0.id == "weekend" })
+
+        var underage = active
+        underage.ageYears = 16
+        underage.estimatedReachSkippedUnder18 = true
+        let underagePlan = SessionPlanBuilder.make(underage)
+        XCTAssertFalse(underagePlan.items.contains { $0.id == "pace" })
+
+        var weekend = SessionPlanInput()
+        weekend.weekendEating = "A little different"
+        let saturday = Date(timeIntervalSince1970: 1_762_000_000)
+        var us = Calendar(identifier: .gregorian)
+        us.locale = Locale(identifier: "en_US_POSIX")
+        us.timeZone = TimeZone(secondsFromGMT: 0)!
+        let weekendPlan = SessionPlanBuilder.make(weekend, now: saturday, calendar: us)
+        XCTAssertTrue(weekendPlan.items.contains { $0.id == "weekend" })
+        let weekdayPlan = SessionPlanBuilder.make(weekend, now: Date(timeIntervalSince1970: 1_762_214_400), calendar: us)
+        XCTAssertFalse(weekdayPlan.items.contains { $0.id == "weekend" })
+    }
+
+    private func gregorianMonday() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "en_US_POSIX")
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
     func testUnknownCaloriesRemainUnknownAndZeroRemainsZero() {
         let store = AppStore()
         store.addMeal(name: "Unknown", calories: nil, imageData: nil)
