@@ -329,3 +329,8 @@ Honesty gate **GREEN** (Worker URL, Legal+UI, notes A, privacy.html). Soft: prox
 - Welcome/Profile Privacy Notice opens hosted URL via `openURL`; privacy sheet also has “Open hosted Privacy Policy” Safari link. Terms stay in-app sheet.
 - Release simulator build **SUCCEEDED** (`CODE_SIGNING_ALLOWED=NO`).
 - **Still Charlie / Ship:** `DEVELOPMENT_TEAM`, ASC live IAP products, ASC screenshots, paste Privacy URL into ASC App Privacy / Review Information, clean commit/tag before archive.
+
+## Plate Ship LAND (2026-11-02 ~22:06 HKT) — tip `1df614e`
+**Code green (tip):** age `13...100` + RevisionSafetyTests locked · privacyPolicyURL wired · Pages privacy.html HTTP 200 · Worker HTTPS Release proxy · NSPhotoLibraryUsageDescription · SIWA entitlement · PrivacyInfo.xcprivacy · StoreKit IDs monthly/yearly · honesty A · clean tree on origin/main
+**Charlie-only still open:** DEVELOPMENT_TEAM · ASC live IAP + Paid Apps Agreement · full ASC screenshot sizes (4 images thin) · ASC App Privacy URL paste
+**ASC walkthrough:** hold until Charlie asks
