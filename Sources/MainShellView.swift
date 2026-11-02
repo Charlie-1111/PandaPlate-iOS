@@ -43,6 +43,7 @@ private enum RootSheet: Identifiable, Equatable {
 struct MainShellView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.requestReview) private var requestReview
     @ObservedObject private var firstSuccess = FirstSuccessMoments.shared
     @State private var tab: RootTab = .home
@@ -98,6 +99,7 @@ struct MainShellView: View {
             switch tab {
             case .home:
                 TodayDashboard(onSettingsTap: { activeSheet = .settings })
+                    .transition(.opacity.combined(with: .scale(scale: 0.99)))
             case .challenges:
                 ChallengesDashboard(
                     onMealTap: { openMealLog(.manual) },
@@ -105,6 +107,7 @@ struct MainShellView: View {
                     onWorkoutTap: { activeSheet = .workout }
                 )
                 .environmentObject(store)
+                .transition(.opacity.combined(with: .scale(scale: 0.99)))
             case .stats:
                 ProgressDashboard(
                     showingHistory: statsShowsHistory,
@@ -112,6 +115,7 @@ struct MainShellView: View {
                 )
                 .id(statsShowsHistory)
                 .environmentObject(store)
+                .transition(.opacity.combined(with: .scale(scale: 0.99)))
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -285,6 +289,7 @@ struct MainShellView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Quick actions")
                 .accessibilityHint("Opens meal, water, workout, weight and fasting actions")
+                .buttonStyle(PPQuickActionsPressStyle())
             }
             .padding(.horizontal, horizontalInset)
             .padding(.top, 8)
@@ -301,8 +306,15 @@ struct MainShellView: View {
     private func tabButton(_ item: RootTab, title: String, symbol: String) -> some View {
         let selected = tab == item
         return Button {
-            if item == .stats { statsShowsHistory = false }
-            tab = item
+            let selectTab = {
+                if item == .stats { statsShowsHistory = false }
+                tab = item
+            }
+            if reduceMotion {
+                selectTab()
+            } else {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.86), selectTab)
+            }
         } label: {
             VStack(spacing: 1) {
                 ZStack {
@@ -329,6 +341,19 @@ struct MainShellView: View {
         .accessibilityLabel(title)
         .accessibilityValue(selected ? "Selected" : "Not selected")
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+private struct PPQuickActionsPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.94 : 1)
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.18, dampingFraction: 0.72),
+                value: configuration.isPressed
+            )
     }
 }
 
