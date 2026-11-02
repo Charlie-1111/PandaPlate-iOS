@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Ten session-only water slots. Tap an empty cup to add the selected serving;
-/// select a filled cup and a size to edit it. No target or amount keypad.
+/// Ten session-only water slots. Select a cup and size, then explicitly add or update it.
+/// No target or amount keypad.
 struct WaterQuickLogView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -10,6 +10,25 @@ struct WaterQuickLogView: View {
 
     private var filledCount: Int { WaterQuickLogModel.filledCount(for: store.waterServingsML) }
     private var totalML: Int { WaterQuickLogModel.total(for: store.waterServingsML) }
+    private var canApplySelectedServing: Bool {
+        guard let selectedCupIndex,
+              store.waterServingsML.indices.contains(selectedCupIndex),
+              WaterQuickLogModel.canSet(selectedServing.milliliters, at: selectedCupIndex, in: store.waterServingsML) else { return false }
+        return store.waterServingsML[selectedCupIndex] != selectedServing.milliliters
+    }
+    private var applyButtonTitle: String {
+        guard let selectedCupIndex, store.waterServingsML.indices.contains(selectedCupIndex) else { return "Select a cup" }
+        return store.waterServingsML[selectedCupIndex] == nil ? "Add one cup" : "Update cup size"
+    }
+    private var selectionHint: String {
+        guard let selectedCupIndex, store.waterServingsML.indices.contains(selectedCupIndex) else {
+            return "Choose a size, tap an empty cup, then add it."
+        }
+        if let amount = store.waterServingsML[selectedCupIndex] {
+            return "Cup \(selectedCupIndex + 1) has \(amount) ml. Choose a size, then tap Update cup size."
+        }
+        return "Cup \(selectedCupIndex + 1) selected · \(selectedServing.example). Tap Add one cup to log it."
+    }
 
     var body: some View {
         PPCard(padding: 16) {
@@ -39,7 +58,7 @@ struct WaterQuickLogView: View {
                     }
                 }
 
-                Text(selectedCupIndex.map { "Cup \($0 + 1) selected · choose its size below." } ?? "Tap a cup to add one. Choose a size before or after to match what you drank.")
+                Text(selectionHint)
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -49,6 +68,20 @@ struct WaterQuickLogView: View {
                         servingSizeButton(size)
                     }
                 }
+
+                Button {
+                    guard let selectedCupIndex,
+                          store.setWaterServing(selectedServing.milliliters, at: selectedCupIndex) else { return }
+                } label: {
+                    Label(applyButtonTitle, systemImage: "plus.circle.fill")
+                        .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(canApplySelectedServing ? PPColor.coralInk : PPColor.muted, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canApplySelectedServing)
+                .accessibilityIdentifier("waterQuickLogAddCup")
 
                 HStack(spacing: 10) {
                     Button {
@@ -99,8 +132,9 @@ struct WaterQuickLogView: View {
 
         return Button {
             selectedCupIndex = index
-            if !isFilled {
-                _ = store.setWaterServing(selectedServing.milliliters, at: index)
+            if let serving,
+               let matchingSize = WaterServingSize.allCases.first(where: { $0.milliliters == serving }) {
+                selectedServing = matchingSize
             }
         } label: {
             Image(isFilled ? "PandaPlateWaterCupFilled" : "PandaPlateWaterCupEmpty")
@@ -119,7 +153,7 @@ struct WaterQuickLogView: View {
         .disabled(!canSelect)
         .accessibilityLabel("Water cup \(index + 1), \(spokenValue)")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
-        .accessibilityHint(isFilled ? "Selects this cup so you can change its size or remove it." : "Adds a \(selectedServing.milliliters) milliliter serving.")
+        .accessibilityHint(isFilled ? "Selects this cup; choose a size and tap Update cup size to change it." : "Selects this empty cup; tap Add one cup to log it.")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("waterCupSlot\(index)")
     }
@@ -128,10 +162,6 @@ struct WaterQuickLogView: View {
         let isSelected = selectedServing == size
         return Button {
             selectedServing = size
-            if let selectedCupIndex,
-               store.waterServingsML[selectedCupIndex] != nil {
-                _ = store.setWaterServing(size.milliliters, at: selectedCupIndex)
-            }
         } label: {
             VStack(spacing: 3) {
                 Text(size.title)
@@ -150,7 +180,7 @@ struct WaterQuickLogView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(size.title), \(size.milliliters) milliliters")
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
-        .accessibilityHint(selectedCupIndex.flatMap { store.waterServingsML[$0] } == nil ? "Sets the size for the next cup." : "Changes the selected cup to this size.")
+        .accessibilityHint("Selects the size only. Tap Add one cup or Update cup size to apply it.")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("waterServingSize_\(size.id)")
     }

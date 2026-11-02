@@ -1,16 +1,64 @@
 import SwiftUI
 
 enum PPColor {
-    static let cream = Color(red: 0.98, green: 0.96, blue: 0.92)
-    static let card = Color(red: 1.00, green: 0.99, blue: 0.96)
-    static let coral = Color(red: 0.94, green: 0.35, blue: 0.27)
-    static let coralInk = Color(red: 0.62, green: 0.16, blue: 0.12)
-    static let ink = Color(red: 0.18, green: 0.12, blue: 0.10)
-    static let muted = Color(red: 0.49, green: 0.43, blue: 0.39)
-    static let line = Color(red: 0.89, green: 0.83, blue: 0.75)
-    static let mint = Color(red: 0.84, green: 0.91, blue: 0.83)
-    static let lavender = Color(red: 0.88, green: 0.84, blue: 0.93)
-    static let peach = Color(red: 1.00, green: 0.88, blue: 0.79)
+    // Forest + paper are the default product palette; warm coral is reserved for small accents.
+    static let forest = Color(red: 0.184, green: 0.416, blue: 0.310)       // #2F6A4F
+    static let forestDeep = Color(red: 0.145, green: 0.298, blue: 0.231)   // #254C3B
+    static let accentCoral = Color(red: 0.835, green: 0.322, blue: 0.275) // #D45446
+    static let cream = Color(red: 0.965, green: 0.953, blue: 0.918)       // #F6F3EA
+    static let card = Color(red: 0.998, green: 0.992, blue: 0.973)         // #FFFEF8
+    static let softBlue = Color(red: 0.902, green: 0.937, blue: 0.957)     // #E6EFF4
+    static let sage = Color(red: 0.886, green: 0.925, blue: 0.875)         // #E2ECDC
+    static let ink = Color(red: 0.125, green: 0.204, blue: 0.157)         // #203429
+    static let muted = Color(red: 0.345, green: 0.408, blue: 0.365)       // #58685D
+    static let line = Color(red: 0.839, green: 0.875, blue: 0.831)        // #D6DFD4
+    static let selectedWash = Color(red: 0.882, green: 0.925, blue: 0.886) // #E1ECE2
+
+    // Source-compatible aliases while existing screens migrate to semantic names.
+    static let coral = forest
+    static let coralInk = forestDeep
+    static let mint = sage
+    static let lavender = softBlue
+    static let peach = softBlue
+    static let primary = forest
+    static let primaryInk = forestDeep
+    static let border = line
+}
+
+enum PPSpacing {
+    static let xSmall: CGFloat = 4
+    static let small: CGFloat = 8
+    static let medium: CGFloat = 12
+    static let large: CGFloat = 16
+    static let pageInset: CGFloat = 20
+    static let cardInset: CGFloat = 18
+    static let buttonVertical: CGFloat = 17
+    static let progressThickness: CGFloat = 5
+}
+
+enum PPRadius {
+    static let icon: CGFloat = 14
+    static let choice: CGFloat = 18
+    static let card: CGFloat = 22
+    static let sheet: CGFloat = 26
+}
+
+enum PPType {
+    static func display(_ size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
+        .system(size: size, weight: .heavy, design: .rounded, relativeTo: style)
+    }
+
+    static func title(_ size: CGFloat = 18) -> Font {
+        .system(size: size, weight: .bold, design: .rounded, relativeTo: .title3)
+    }
+
+    static func body(_ size: CGFloat = 15, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight, design: .rounded, relativeTo: .body)
+    }
+
+    static func caption(_ size: CGFloat = 12, weight: Font.Weight = .medium) -> Font {
+        .system(size: size, weight: weight, design: .rounded, relativeTo: .caption)
+    }
 }
 
 /// BitePal-parity chrome for onboarding beats Charlie wants visually copied.
@@ -21,24 +69,24 @@ enum BitePalColor {
     static let introVideoGreen = Color(red: 184.0 / 255.0, green: 227.0 / 255.0, blue: 202.0 / 255.0) // #B8E3CA
     /// Meet-pet / reveal soft mint (aligned to intro video green).
     static let mintScreen = Color(red: 184.0 / 255.0, green: 227.0 / 255.0, blue: 202.0 / 255.0) // #B8E3CA
-    /// Question-flow light grey (#E9E8EE / #F2F2F7-ish).
-    static let questionBG = Color(red: 0.914, green: 0.910, blue: 0.933) // #E9E8EE
-    static let tipPill = Color(red: 0.875, green: 0.871, blue: 0.894) // #DFDFE4
-    /// Pastel pink small-steps screen.
-    static let pinkScreen = Color(red: 0.984, green: 0.839, blue: 0.835) // #FBD6D5
-    static let starSalmon = Color(red: 0.980, green: 0.510, blue: 0.431) // #FA8270
+    /// Warm paper question surface with a soft-blue helper pill.
+    static let questionBG = PPColor.cream
+    static let tipPill = PPColor.softBlue
+    /// Soft blue replaces the old pink field; coral remains a small decorative accent only.
+    static let pinkScreen = Color(red: 0.925, green: 0.949, blue: 0.965) // #ECF2F6
+    static let starSalmon = PPColor.accentCoral
     /// Eating-habits mint room wall.
-    static let kitchenMint = Color(red: 0.882, green: 0.945, blue: 0.878) // #E1F1E0
-    static let kitchenFloor = Color(red: 0.996, green: 0.929, blue: 0.800) // #FEEDCC
+    static let kitchenMint = PPColor.sage
+    static let kitchenFloor = PPColor.cream
     /// Account light blue tint.
-    static let accountBlue = Color(red: 0.843, green: 0.882, blue: 0.988) // #D7E1FC
-    /// Black pill CTAs.
-    static let ctaBlack = Color(red: 0.094, green: 0.094, blue: 0.094) // #181818
+    static let accountBlue = PPColor.softBlue
+    /// Deep forest pill CTAs.
+    static let ctaBlack = PPColor.forestDeep
     /// Selection accent green.
-    static let selectGreen = Color(red: 0.282, green: 0.659, blue: 0.314) // #48A850
-    static let selectFill = Color(red: 0.706, green: 0.894, blue: 0.745) // #B4E4BE
-    static let whiteCard = Color.white
-    static let titleGrey = Color(red: 0.55, green: 0.55, blue: 0.58)
+    static let selectGreen = PPColor.forest
+    static let selectFill = PPColor.selectedWash
+    static let whiteCard = PPColor.card
+    static let titleGrey = PPColor.muted
     // Rainbow bands (small-steps)
     static let rainbowMint = Color(red: 0.671, green: 0.914, blue: 0.851) // #ABE9D9
     static let rainbowYellow = Color(red: 0.996, green: 0.941, blue: 0.698) // #FEF0B2
@@ -92,13 +140,15 @@ struct PrimaryButton: View {
         Button(action: action) {
             HStack(spacing: 10) {
                 Spacer(minLength: 0)
-                Text(title).font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
+                Text(title).font(PPType.body(17, weight: .bold))
                 Image(systemName: symbol).font(.system(size: 14, weight: .bold))
                 Spacer(minLength: 0)
             }
             .foregroundStyle(.white)
-            .padding(.vertical, 17)
-            .background(PPColor.coral, in: Capsule())
+            .padding(.vertical, PPSpacing.buttonVertical)
+            .frame(minHeight: 52)
+            .background(PPColor.primary, in: Capsule())
+            .shadow(color: PPColor.primaryInk.opacity(0.15), radius: 7, y: 3)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
@@ -107,15 +157,16 @@ struct PrimaryButton: View {
 }
 
 struct PPCard<Content: View>: View {
-    var padding: CGFloat = 18
+    var padding: CGFloat = PPSpacing.cardInset
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(PPColor.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(PPColor.line.opacity(0.55), lineWidth: 1))
+            .background(PPColor.card, in: RoundedRectangle(cornerRadius: PPRadius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: PPRadius.card, style: .continuous).stroke(PPColor.border.opacity(0.7), lineWidth: 1))
+            .shadow(color: PPColor.forestDeep.opacity(0.05), radius: 9, y: 3)
     }
 }
 
@@ -123,7 +174,7 @@ struct Eyebrow: View {
     let text: String
     var body: some View {
         Text(text.uppercased())
-            .font(.system(size: 10, weight: .bold, design: .rounded, relativeTo: .caption2))
+            .font(PPType.caption(10, weight: .bold))
             .tracking(1.3)
             .foregroundStyle(PPColor.muted)
     }
@@ -132,16 +183,19 @@ struct Eyebrow: View {
 struct ProgressSegments: View {
     let current: Int
     let count: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         HStack(spacing: 5) {
             ForEach(0..<count, id: \.self) { index in
                 Capsule()
-                    .fill(index <= current ? PPColor.coral : PPColor.line.opacity(0.65))
-                    .frame(height: 5)
+                    .fill(index <= current ? PPColor.primary : PPColor.line.opacity(0.65))
+                    .frame(height: PPSpacing.progressThickness)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Step \(current + 1) of \(count)")
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: current)
     }
 }
 
@@ -151,27 +205,31 @@ struct ChoiceRow: View {
     let symbol: String
     let isSelected: Bool
     var action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(isSelected ? PPColor.coralInk : PPColor.ink)
+                    .font(PPType.body(18, weight: .semibold))
+                    .foregroundStyle(isSelected ? PPColor.primaryInk : PPColor.ink)
                     .frame(width: 44, height: 44)
-                    .background(isSelected ? PPColor.peach : PPColor.cream, in: RoundedRectangle(cornerRadius: 14))
+                    .background(isSelected ? PPColor.selectedWash : PPColor.cream, in: RoundedRectangle(cornerRadius: PPRadius.icon, style: .continuous))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline)).foregroundStyle(PPColor.ink)
-                    Text(subtitle).font(.system(size: 12, weight: .regular, design: .rounded, relativeTo: .caption)).foregroundStyle(PPColor.muted)
+                    Text(title).font(PPType.body(15, weight: .bold)).foregroundStyle(PPColor.ink)
+                    Text(subtitle).font(PPType.caption(12, weight: .regular)).foregroundStyle(PPColor.muted)
                 }
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(PPColor.coralInk).font(.system(size: 20))
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(13)
-            .background(PPColor.card, in: RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(isSelected ? PPColor.coral : PPColor.line.opacity(0.65), lineWidth: isSelected ? 1.5 : 1))
+            .padding(PPSpacing.medium)
+            .frame(minHeight: 68)
+            .background(PPColor.card, in: RoundedRectangle(cornerRadius: PPRadius.choice, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: PPRadius.choice, style: .continuous).stroke(isSelected ? PPColor.primary : PPColor.line.opacity(0.75), lineWidth: isSelected ? 1.5 : 1))
+            .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.78), value: isSelected)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
@@ -188,12 +246,13 @@ struct SectionTitle: View {
     var action: (() -> Void)? = nil
     var body: some View {
         HStack {
-            Text(title).font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .title3)).foregroundStyle(PPColor.ink)
+            Text(title).font(PPType.title()).foregroundStyle(PPColor.ink)
             Spacer()
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.coralInk)
+                    .font(PPType.caption(12, weight: .semibold))
+                    .foregroundStyle(PPColor.primaryInk)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
             }
         }
     }

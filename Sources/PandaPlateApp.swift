@@ -1,15 +1,20 @@
 import SwiftUI
-import GoogleSignIn
 
 @main
 struct PandaPlateApp: App {
-    @StateObject private var store = AppStore()
+    @StateObject private var store: AppStore
     @Environment(\.scenePhase) private var scenePhase
     /// Driven by onboarding welcome via PreferenceKey — hides battery/Wi‑Fi/signal there only.
     @State private var hideStatusBar = false
 
     init() {
-        Self.configureGoogleSignInIfNeeded()
+        let store = AppStore()
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-test-open-home") {
+            store.finishedOnboarding = true
+        }
+        #endif
+        _store = StateObject(wrappedValue: store)
     }
 
     var body: some Scene {
@@ -42,11 +47,7 @@ struct PandaPlateApp: App {
                         }
                 }
             }
-            .onOpenURL { url in
-                GIDSignIn.sharedInstance.handle(url)
-            }
             .onAppear {
-                Self.configureGoogleSignInIfNeeded()
                 // Presence means they opened the app — never require a meal or Pip ritual to avoid a no-show.
                 SoftShowUpStore.shared.markSeen()
                 PipHeartsStore.shared.refreshDecayIfNeeded(showUpDays: SoftShowUpStore.shared.days)
@@ -59,16 +60,5 @@ struct PandaPlateApp: App {
             .onPreferenceChange(PandaPlateStatusBarHiddenPreferenceKey.self) { hideStatusBar = $0 }
             .statusBarHidden(hideStatusBar)
         }
-    }
-
-    /// Reads `GIDClientID` from Info.plist / Bundle so Charlie can paste one value later without code edits.
-    private static func configureGoogleSignInIfNeeded() {
-        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
-              !clientID.isEmpty,
-              !clientID.contains("REPLACE_WITH_GOOGLE") else {
-            // Placeholder still in place — leave unconfigured; UI shows a clear message on tap.
-            return
-        }
-        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
     }
 }

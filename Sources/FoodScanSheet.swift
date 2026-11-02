@@ -24,6 +24,8 @@ struct FoodScanSheet: View {
     @State private var showConsentOverlay = false
     @State private var isScanning = false
     @State private var scanError: String?
+    @State private var needsProxySignIn = false
+    @State private var showProxySignIn = false
     @State private var showPaywall = false
     @State private var showCamera = false
     @State private var resultCandidate: FoodScanCandidate?
@@ -115,6 +117,42 @@ struct FoodScanSheet: View {
         .sheet(isPresented: $showPaywall) {
             PremiumPaywallView()
         }
+        .sheet(isPresented: $showProxySignIn) {
+            NavigationStack {
+                VStack(spacing: 18) {
+                    Text("Sign in to scan")
+                        .font(.system(size: 23, weight: .bold, design: .rounded, relativeTo: .title2))
+                        .foregroundStyle(PPColor.ink)
+                    Text("A fresh sign-in is needed for photo recognition. Manual meal logging remains available without an account or scan session.")
+                        .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .body))
+                        .foregroundStyle(PPColor.muted)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    PandaPlateProxySignInButtons { _ in
+                        showProxySignIn = false
+                        needsProxySignIn = false
+                        consented = false
+                        scanError = "Signed in. Take or choose a photo, then confirm consent again to scan."
+                    }
+                    Button("Close and log manually") {
+                        showProxySignIn = false
+                        dismiss()
+                    }
+                    .font(.system(size: 14, weight: .semibold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .padding(24)
+                .background(PPColor.cream.ignoresSafeArea())
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { showProxySignIn = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPhotoPicker(
                 onCapture: { image in
@@ -172,7 +210,7 @@ struct FoodScanSheet: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
 
-            Text("Live food recognition needs a configured server. Photo notes remain available without it.")
+            Text("Optional Food Scan: after you consent, your photo goes over HTTPS to our owner-hosted proxy for an editable estimate. Manual photo notes never upload.")
                 .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
                 .foregroundStyle(PPColor.ink)
                 .padding(.top, 6)
@@ -199,6 +237,19 @@ struct FoodScanSheet: View {
                     .multilineTextAlignment(.center)
             }
 
+            if needsProxySignIn {
+                Button("Sign in to retry scan") { showProxySignIn = true }
+                    .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(PPColor.card, in: Capsule())
+                    .padding(.horizontal, 24)
+                    .accessibilityIdentifier("proxySessionReauthentication")
+                Text("Or close Food Scan and use Manual entry.")
+                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.muted)
+            }
+
             Text("You can review everything before saving.")
                 .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                 .foregroundStyle(PPColor.muted)
@@ -216,7 +267,7 @@ struct FoodScanSheet: View {
                 Text("Before we look at your plate")
                     .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
                     .foregroundStyle(PPColor.ink)
-                Text("If live recognition is enabled, this photo goes to the configured PandaPlate scan server and DeepSeek for food recognition. DeepSeek says personal data may be stored in China and used to improve its services, including model training; it gives no fixed deletion period. The food name is sent to USDA FoodData Central for a nutrient match. Don’t include people or personal details. You can cancel instead.")
+                Text("This photo will be sent over HTTPS to an owner-hosted PandaPlate proxy for DeepSeek vision recognition, then USDA FoodData Central for a nutrient lookup from the food name (USDA does not get your photo). DeepSeek may process data under its own policy; processing or storage could involve China, and we cannot confirm retention or whether inputs are used for model training. Results are editable estimates. Don’t include people or personal details. You can cancel instead.")
                     .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -318,7 +369,7 @@ struct FoodScanSheet: View {
             return
         }
         guard quota.canStartLiveScan(isPremium: premium.isPremium) else {
-            scanError = "You’ve reached today’s Free scan limit. Live recognition isn’t connected for App Store users in this build."
+            scanError = "You’ve reached today’s Free Food Scan limit (3/day). Premium removes the daily cap via App Store purchase. Manual logging stays available."
             step = .camera
             return
         }
@@ -334,7 +385,7 @@ struct FoodScanSheet: View {
 
         Task {
             do {
-                let response = try await FoodScanClient.scan(image: image, consent: true)
+                let response = try await FoodScanClient.scan(image: image, consent: consented)
                 await MainActor.run {
                     isScanning = false
                     applyScanResponse(response)
@@ -345,6 +396,7 @@ struct FoodScanSheet: View {
                 await MainActor.run {
                     isScanning = false
                     resultCandidate = nil
+                    needsProxySignIn = (error as? FoodScanClientError) == .authenticationRequired
                     scanError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                     step = .camera
                 }

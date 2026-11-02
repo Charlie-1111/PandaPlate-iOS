@@ -41,52 +41,10 @@ final class PandaPlateChallengeAndHeartsTests: XCTestCase {
         XCTAssertEqual(store.hearts, PipHeartsStore.maxHearts)
     }
 
-    func testQuietDayLosesOneHeartButSeenAndFrozenDaysDoNot() {
-        let calendar = utcCalendar()
-        let yesterday = date(2026, 10, 24, calendar: calendar)
-        let twoDaysAgo = date(2026, 10, 23, calendar: calendar)
-        let today = date(2026, 10, 25, calendar: calendar)
-        let priorDayKey = PipHeartsStore.dayStamp(twoDaysAgo, calendar: calendar)
-        let yesterdayKey = PipHeartsStore.dayStamp(yesterday, calendar: calendar)
-
-        let quietDefaults = isolatedDefaults()
-        quietDefaults.set(PipHeartsStore.maxHearts, forKey: PipHeartsStore.heartsKey)
-        quietDefaults.set(priorDayKey, forKey: PipHeartsStore.lastEvaluatedDayKey)
-        let quietStore = PipHeartsStore(defaults: quietDefaults, calendar: calendar)
-        quietStore.refreshDecayIfNeeded(now: today, showUpDays: [])
-        XCTAssertEqual(quietStore.hearts, PipHeartsStore.maxHearts - 1)
-
-        let seenDefaults = isolatedDefaults()
-        seenDefaults.set(PipHeartsStore.maxHearts, forKey: PipHeartsStore.heartsKey)
-        seenDefaults.set(priorDayKey, forKey: PipHeartsStore.lastEvaluatedDayKey)
-        let seenStore = PipHeartsStore(defaults: seenDefaults, calendar: calendar)
-        seenStore.refreshDecayIfNeeded(
-            now: today,
-            showUpDays: [SoftShowUpDay(dateKey: yesterdayKey, kind: .seen)]
-        )
-        XCTAssertEqual(seenStore.hearts, PipHeartsStore.maxHearts)
-
-        let frozenDefaults = isolatedDefaults()
-        frozenDefaults.set(PipHeartsStore.maxHearts, forKey: PipHeartsStore.heartsKey)
-        frozenDefaults.set(priorDayKey, forKey: PipHeartsStore.lastEvaluatedDayKey)
-        let frozenStore = PipHeartsStore(defaults: frozenDefaults, calendar: calendar)
-        frozenStore.refreshDecayIfNeeded(
-            now: today,
-            showUpDays: [SoftShowUpDay(dateKey: yesterdayKey, kind: .frozen)]
-        )
-        XCTAssertEqual(frozenStore.hearts, PipHeartsStore.maxHearts)
-    }
-
-    func testRepeatedForegroundRefreshCannotChargeTheSameDayTwice() {
+    func testMealSaveNeverChangesHearts() {
         let defaults = isolatedDefaults()
-        let calendar = utcCalendar()
-        defaults.set(PipHeartsStore.maxHearts, forKey: PipHeartsStore.heartsKey)
-        defaults.set(PipHeartsStore.dayStamp(date(2026, 10, 23, calendar: calendar), calendar: calendar), forKey: PipHeartsStore.lastEvaluatedDayKey)
-        let store = PipHeartsStore(defaults: defaults, calendar: calendar)
-        let today = date(2026, 10, 25, calendar: calendar)
-
-        store.refreshDecayIfNeeded(now: today, showUpDays: [])
-        store.refreshDecayIfNeeded(now: today, showUpDays: [])
-        XCTAssertEqual(store.hearts, PipHeartsStore.maxHearts - 1)
+        let store = PipHeartsStore(defaults: defaults)
+        store.noteFoodLogSaved()
+        XCTAssertEqual(store.hearts, PipHeartsStore.maxHearts)
     }
 }

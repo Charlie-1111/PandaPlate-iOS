@@ -42,7 +42,7 @@ enum PipLook: String, CaseIterable, Identifiable, Codable {
     /// Free can always use base; other looks need Premium.
     var requiresPremium: Bool { self != .base }
 
-    /// Bundled APNG resource name (without extension) preferred for a ritual phase.
+    /// Frame-sequence folder name used for a ritual phase (also matches the legacy APNG basename).
     static func lifeLoopResource(for phase: PipRitualPhase, celebrateLove: Bool) -> String {
         switch phase {
         case .welcome:
@@ -73,6 +73,44 @@ enum PipRitualPhase: Equatable {
     case welcome
     case saidHi
     case napping
+}
+
+/// Home hero moments — idle loop, one-shot wave on tap, one-shot cheer after a confirmed meal save.
+enum PipHomeMoment: Equatable {
+    case idle
+    case waving
+    case cheering
+}
+
+extension PipLook {
+    /// Frame-sequence folder name under `PipLife/Frames` for this Home moment.
+    static func homeLoopResource(for moment: PipHomeMoment) -> String {
+        switch moment {
+        case .idle: return "PP_PipLife_Idle"
+        case .waving: return "PP_PipLife_Wave"
+        case .cheering: return "PP_PipLife_Celebrate"
+        }
+    }
+
+    func homeStillAsset(for moment: PipHomeMoment) -> String {
+        guard self == .base else { return stillAssetName }
+        switch moment {
+        case .idle: return stillAssetName
+        case .waving: return "PP_PipGentle"
+        case .cheering: return "PP_PipCelebrate"
+        }
+    }
+
+    static func homeAccessibilityLabel(for moment: PipHomeMoment, companionName: String) -> String {
+        switch moment {
+        case .idle:
+            return "\(companionName) in the forest garden"
+        case .waving:
+            return "\(companionName) waves hello in the forest garden"
+        case .cheering:
+            return "\(companionName) cheers your saved meal"
+        }
+    }
 }
 
 @MainActor

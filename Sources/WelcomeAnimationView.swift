@@ -71,6 +71,8 @@ final class PlayerContainer: UIView {
 struct MutedOneShotVideo: UIViewRepresentable {
     let url: URL
     let shouldPlay: Bool
+    var videoGravity: AVLayerVideoGravity = .resizeAspect
+    var onFinished: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -88,7 +90,7 @@ struct MutedOneShotVideo: UIViewRepresentable {
         player.automaticallyWaitsToMinimizeStalling = true
 
         container.playerLayer.player = player
-        container.playerLayer.videoGravity = .resizeAspect
+        container.playerLayer.videoGravity = videoGravity
         container.playerLayer.needsDisplayOnBoundsChange = true
 
         let coordinator = context.coordinator
@@ -100,6 +102,7 @@ struct MutedOneShotVideo: UIViewRepresentable {
         ) { [weak coordinator] _ in
             coordinator?.didFinish = true
             coordinator?.player?.pause()
+            coordinator?.onFinished()
         }
 
         coordinator.statusObservation = item.observe(\.status, options: [.new]) { [weak coordinator] observed, _ in
@@ -113,6 +116,7 @@ struct MutedOneShotVideo: UIViewRepresentable {
         }
 
         coordinator.wantsPlay = shouldPlay
+        coordinator.onFinished = onFinished
         if shouldPlay, item.status == .readyToPlay {
             player.play()
         }
@@ -123,6 +127,8 @@ struct MutedOneShotVideo: UIViewRepresentable {
         let coordinator = context.coordinator
         guard let player = coordinator.player else { return }
         coordinator.wantsPlay = shouldPlay
+        coordinator.onFinished = onFinished
+        uiView.playerLayer.videoGravity = videoGravity
         if shouldPlay && !coordinator.didFinish {
             // Only kick play when paused — never re-seek / re-rate (that causes hitching).
             if player.timeControlStatus != .playing && player.rate == 0 {
@@ -151,6 +157,7 @@ struct MutedOneShotVideo: UIViewRepresentable {
         var statusObservation: NSKeyValueObservation?
         var didFinish = false
         var wantsPlay = false
+        var onFinished: () -> Void = {}
 
         deinit {
             statusObservation?.invalidate()

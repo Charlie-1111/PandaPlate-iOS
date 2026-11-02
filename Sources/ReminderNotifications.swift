@@ -79,17 +79,18 @@ enum ReminderNotifications {
                     id: idMealFirst,
                     hour: first.hour,
                     minute: first.minute,
-                    title: "Meal log nudge",
-                    body: "If it helps, log your meal when you’re ready — no pressure."
+                    title: "First-meal check-in",
+                    body: "If it helps, log something when you’re ready — no pressure."
                 )
-                // A second gentle evening nudge so “each meal” isn’t only once.
-                await addDaily(
-                    id: idMealEvening,
-                    hour: 18,
-                    minute: 0,
-                    title: "Evening meal nudge",
-                    body: "Optional reminder to log dinner with \(pet) nearby."
-                )
+                if first.hour != 18 || first.minute != 0 {
+                    await addDaily(
+                        id: idMealEvening,
+                        hour: 18,
+                        minute: 0,
+                        title: "Evening meal reminder",
+                        body: "Optional reminder to log something with \(pet) nearby."
+                    )
+                }
             } else {
                 await addDaily(
                     id: idMealMidday,

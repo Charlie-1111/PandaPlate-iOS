@@ -3,6 +3,31 @@ import XCTest
 
 @MainActor
 final class PandaPlateRevisionSafetyTests: XCTestCase {
+    func testAgeRangeAndBodyProfileStayNonNumericAndNeutral() {
+        XCTAssertEqual(PandaPlateOnboardingRules.allowedAgeYears, 10...100)
+
+        var firstProfile = PandaPlateOnboardingDraft()
+        firstProfile.ageYears = 17
+        firstProfile.heightCentimeters = 140
+        firstProfile.currentWeightKilograms = 95
+        firstProfile.targetWeightKilograms = 50
+
+        var differentProfile = firstProfile
+        differentProfile.heightCentimeters = 195
+        differentProfile.currentWeightKilograms = 48
+        differentProfile.targetWeightKilograms = 120
+
+        let firstPlan = PandaPlatePlanBuilder.build(from: firstProfile)
+        let differentPlan = PandaPlatePlanBuilder.build(from: differentProfile)
+
+        XCTAssertEqual(firstPlan.safety, .under18)
+        XCTAssertEqual(firstPlan, differentPlan, "Measurement values must not change non-numeric plan content.")
+        XCTAssertEqual(firstPlan.bodyNeutralEmphasis, "Keep the routine comfortable and flexible; profile measurements do not change any targets here.")
+        XCTAssertFalse(firstPlan.bodyNeutralEmphasis?.contains("kg") ?? false)
+        XCTAssertFalse(firstPlan.bodyNeutralEmphasis?.contains("cm") ?? false)
+        XCTAssertTrue(firstPlan.safetyNote.contains("does not set food, body, fasting, or activity targets"))
+    }
+
     func testWorkoutAndFastingRecordsDoNotChangeNutritionTotals() {
         let store = AppStore()
         store.addMeal(name: "Lunch", calories: 500, imageData: nil)

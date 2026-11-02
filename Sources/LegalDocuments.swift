@@ -1,9 +1,12 @@
 import SwiftUI
 
-/// In-app Terms of Use + Privacy Notice (honest local copy; no fake hosted lawyer URL).
-/// Charlie can later replace bodies with hosted URLs.
+/// In-app Terms of Use + Privacy Notice. Hosted Privacy Policy is live on GitHub Pages.
+/// There is no docs/terms.html yet — Terms remain in-app only (`termsOfUseBody`).
+/// ASC: paste privacyPolicyURL into App Privacy / App Information.
 enum PandaPlateLegal {
-    static let supportEmail = "rigsby-dayf8v@bot.cue.im"
+    static let supportEmail = "lisbon-oondn8@bot.cue.im"
+    /// Hosted Privacy Policy (GitHub Pages HTTP 200 verified 2026-11-02).
+    static let privacyPolicyURL: URL? = URL(string: "https://charlie-1111.github.io/PandaPlate-iOS/privacy.html")
 
     enum Document: String, Identifiable {
         case termsOfUse
@@ -20,7 +23,7 @@ enum PandaPlateLegal {
     }
 
     static let termsOfUseBody: String = """
-    Last updated: 25 October 2026 (Asia/Hong_Kong)
+    Last updated: 31 October 2026 (Asia/Hong_Kong)
 
     Welcome to PandaPlate. These Terms of Use (“Terms”) explain how you may use this app. By tapping Get started or continuing past the welcome screen, you agree to these Terms and our Privacy Notice.
 
@@ -31,16 +34,16 @@ enum PandaPlateLegal {
     PandaPlate is a gentle food-logging and companion app. It is not medical advice, not a diagnosis tool, and not a calorie-prescription service. BMI and similar figures, when shown, are informational only from numbers you enter.
 
     3. Your account
-    Finishing setup may require Sign in with Apple or Google so your session can stay with you. You are responsible for the account you use. Do not use someone else’s credentials.
+    Finishing setup may require Sign in with Apple so your session can stay with you. You are responsible for the account you use. Do not use someone else’s credentials.
 
     4. Free and Premium
-    Free includes manual logging, water, workouts, and fasting tools as offered in the build. Food recognition is unavailable as a production service in this version. Premium is optional and sold through Apple StoreKit only when subscription products are configured. Prices and renewal terms must come from the App Store purchase sheet. Manage or cancel subscriptions in Apple ID subscription settings.
+    Free includes manual logging, water, workouts, fasting tools, and a limited number of live Food Scan recognitions per day as offered in the build. Premium is optional and sold through Apple StoreKit only when subscription products are configured. Prices and renewal terms must come from the App Store purchase sheet. Manage or cancel subscriptions in Apple ID subscription settings.
 
     5. Camera, photos, and Health
     Camera access is requested only when you choose to take a photo for a meal log. Apple Health is read only if you tap Connect; we do not write to Health in this version. You can skip Health.
 
     6. Food Scan
-    Live food recognition and barcode lookup are unavailable as production services in this version. A photo can be attached to a manual note. If a local test server is configured, each scan requires consent and results are estimates to review, not health advice. Do not scan images of other people without permission.
+    Live food recognition uses an owner-hosted HTTPS proxy when you choose Food Scan and give fresh consent for that upload. Selecting a photo for a manual note alone does not send the image. Barcode lookup is not offered as a production service in this version. Results are editable estimates, not health advice. Do not scan images of other people without permission.
 
     7. Acceptable use
     Don’t misuse the app, attempt to break scan quotas unfairly, harass others through shared exports, or use PandaPlate for anything illegal. Soft Show-Up and Pip reactions are supportive — not a grading system.
@@ -56,7 +59,7 @@ enum PandaPlateLegal {
     """
 
     static let privacyNoticeBody: String = """
-    Last updated: 25 October 2026 (Asia/Hong_Kong)
+    Last updated: 31 October 2026 (Asia/Hong_Kong)
 
     This Privacy Notice explains what PandaPlate handles on your device and what may leave the device when you use optional features. We do not sell your personal data.
 
@@ -67,7 +70,7 @@ enum PandaPlateLegal {
     In the current build, meal logs, photos you attach, water entries, workout picks, fasting notes, Soft Show-Up answers, Pip preferences, and most onboarding answers are kept in app memory / local session storage and typically reset when the app closes. They are not uploaded to a PandaPlate “account cloud” in this build.
 
     3. Sign-in
-    If you use Sign in with Apple or Google, Apple or Google provide an identifier (and sometimes an email) so we can recognize you for setup completion. We store those identifiers in the onboarding draft / local prefs for this session. We do not get your password.
+    If you use Sign in with Apple, Apple provides an identifier (and sometimes an email) so we can recognize you for setup completion. We store those identifiers in the onboarding draft / local prefs for this session. We do not get your password.
 
     4. Camera and photo library
     Used when you open Food Scan (system camera or photo library) to choose one still image for a meal. Images stay on device unless you continue with Food Scan (below).
@@ -75,8 +78,8 @@ enum PandaPlateLegal {
     5. Apple Health
     If you tap Connect, we may read steps, active energy, exercise time, and workouts to show today’s movement and optionally help log workouts. We do not write to Health in this version. You can skip Connect.
 
-    6. Food Scan (experimental; production service unavailable)
-    Food recognition and barcode lookup are not available as production services in this version. Selecting a photo for a manual note does not itself send the image. If a local test server is configured and you start a scan, the app asks for fresh consent. The current server implementation sends the photo to DeepSeek for visual recognition and the resulting food name to USDA FoodData Central for a nutrient match. DeepSeek’s current Privacy Policy says personal data may be stored in China, used to improve its services including model training, and kept as long as necessary; it does not give a fixed deletion period. PandaPlate cannot promise when a provider deletes a request. Results are uncertain estimates; you can edit them before saving. Do not include other people or personal details.
+    6. Food Scan (optional; consent each upload)
+    When you use Food Scan and consent to a live recognition request, PandaPlate may send the still meal photo you chose to an owner-hosted HTTPS proxy. Selecting a photo for a manual note alone does not send the image. The app asks for fresh consent before each upload. The current proxy may send the image to DeepSeek for vision analysis and use USDA FoodData Central to look up nutrients from food names or identifiers (USDA does not receive your photo). DeepSeek may process data under its own policy; processing or storage could involve China, and we cannot confirm retention or whether inputs are used for model training. Results are uncertain estimates; you can edit them before saving. Do not include other people or personal details. Barcode lookup is not a production service in this version.
 
     7. Purchases
     Premium purchases and restores go through Apple StoreKit. Apple processes payment; we receive entitlement status, not your full card number.
@@ -116,6 +119,17 @@ struct PandaPlateLegalDocumentSheet: View {
                         .foregroundStyle(PPColor.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
+                    if document == .privacyNotice, let url = PandaPlateLegal.privacyPolicyURL {
+                        Link(destination: url) {
+                            Label("Open hosted Privacy Policy", systemImage: "safari")
+                                .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .body))
+                                .foregroundStyle(PPColor.coralInk)
+                                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityHint("Opens the Privacy Policy in Safari")
+                    }
+
                     Link(destination: URL(string: "mailto:\(PandaPlateLegal.supportEmail)")!) {
                         Label("Email support · \(PandaPlateLegal.supportEmail)", systemImage: "envelope.fill")
                             .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .body))
@@ -145,6 +159,7 @@ struct PandaPlateLegalLinksRow: View {
     var preface: String = "By continuing you’re accepting our"
     var style: Style = .welcome
     @Binding var presentedDocument: PandaPlateLegal.Document?
+    @Environment(\.openURL) private var openURL
 
     enum Style {
         case welcome
@@ -180,7 +195,11 @@ struct PandaPlateLegalLinksRow: View {
 
     private func legalButton(_ title: String, _ doc: PandaPlateLegal.Document) -> some View {
         Button {
-            presentedDocument = doc
+            if doc == .privacyNotice, let url = PandaPlateLegal.privacyPolicyURL {
+                openURL(url)
+            } else {
+                presentedDocument = doc
+            }
         } label: {
             Text(title)
                 .font(.system(size: style == .welcome ? 12 : 13, weight: .semibold, design: .rounded, relativeTo: .caption))
@@ -196,7 +215,7 @@ struct PandaPlateLegalLinksRow: View {
         .contentShape(Rectangle())
         .zIndex(2)
         .accessibilityLabel(title)
-        .accessibilityHint("Opens \(title) in this app")
+        .accessibilityHint(doc == .privacyNotice && PandaPlateLegal.privacyPolicyURL != nil ? "Opens hosted Privacy Policy in Safari" : "Opens \(title) in this app")
         .accessibilityAddTraits(.isButton)
     }
 }

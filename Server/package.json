@@ -2,14 +2,14 @@
   "name": "pandaplate-local-proxy",
   "private": true,
   "version": "0.1.0",
-  "description": "Loopback-only mock proxy for PandaPlate local development",
+  "description": "Loopback-only proxy for PandaPlate local development",
   "type": "module",
   "scripts": {
-    "start": "node src/server.mjs",
+    "start": "node --env-file-if-exists=.env src/server.mjs",
     "test": "node --test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.9.0"
   },
   "dependencies": {
     "sharp": "0.35.5"

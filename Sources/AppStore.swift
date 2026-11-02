@@ -1,6 +1,11 @@
 import Foundation
 import SwiftUI
 
+extension Notification.Name {
+    /// Posted after a meal is deliberately saved (manual entry or confirmed scan review).
+    static let pandaPlateMealSavedSuccessfully = Notification.Name("pandaPlateMealSavedSuccessfully")
+}
+
 enum MealTimeValidator {
     static func isValidOptional24HourTime(_ value: String) -> Bool {
         let text = value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -121,8 +126,6 @@ final class AppStore: ObservableObject {
     @Published var estimatedReachSkippedUnder18 = false
     @Published var appleUserIdentifier: String?
     @Published var appleEmail: String?
-    @Published var googleUserIdentifier: String?
-    @Published var googleEmail: String?
     @Published var continuedWithoutAccount = false
     @Published var waterServingsML: [Int?] = Array(repeating: nil, count: WaterQuickLogModel.maximumCups)
     @Published private(set) var canUndoWaterChange = false
@@ -150,6 +153,7 @@ final class AppStore: ObservableObject {
         SoftShowUpStore.shared.markSeen()
         // Soft wall + review milestone: first honest food log confirmed.
         FirstSuccessMoments.shared.noteFirstFoodLogConfirmed()
+        NotificationCenter.default.post(name: .pandaPlateMealSavedSuccessfully, object: nil)
     }
 
     func removeMeal(id: UUID) {
@@ -275,8 +279,6 @@ final class AppStore: ObservableObject {
         estimatedReachSkippedUnder18 = draft.estimatedReachSkippedUnder18
         appleUserIdentifier = draft.appleUserIdentifier
         appleEmail = draft.appleEmail
-        googleUserIdentifier = draft.googleUserIdentifier
-        googleEmail = draft.googleEmail
         continuedWithoutAccount = draft.continuedWithoutAccount
         finishedOnboarding = true
         Task { @MainActor in
@@ -334,8 +336,6 @@ final class AppStore: ObservableObject {
         estimatedReachSkippedUnder18 = false
         appleUserIdentifier = nil
         appleEmail = nil
-        googleUserIdentifier = nil
-        googleEmail = nil
         continuedWithoutAccount = false
     }
 }

@@ -1,11 +1,12 @@
 import XCTest
+import UIKit
 
 final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
     func testOnboardingChoiceStateIsAccessibleAndUpdatesWhenChanged() {
         let app = XCUIApplication()
         app.launch()
 
-        let start = app.buttons["Let’s get started"]
+        let start = app.buttons["Get started"]
         XCTAssertTrue(start.waitForExistence(timeout: 10))
         start.tap()
 
@@ -24,6 +25,39 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         alternateChoice.tap()
         XCTAssertFalse(defaultChoice.isSelected)
         XCTAssertTrue(alternateChoice.isSelected)
+    }
+
+    func testPipRevealStartsOnlyAfterOpenAndOffersSkip() {
+        let app = XCUIApplication()
+        app.launch()
+        app.buttons["Get started"].tap()
+        app.buttons["Continue"].tap() // Main goal is preselected.
+        let extraGoal = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Everyday wellbeing")).firstMatch
+        XCTAssertTrue(extraGoal.waitForExistence(timeout: 5))
+        extraGoal.tap()
+        app.buttons["Continue"].tap()
+        app.buttons["Continue"].tap() // Tracking experience is preselected.
+        XCTAssertTrue(app.staticTexts["A little world is waiting"].waitForExistence(timeout: 5))
+
+        let open = app.buttons["Open"]
+        XCTAssertTrue(open.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["A little world is waiting"].exists)
+        open.tap()
+
+        let continueButton = app.buttons["Continue"]
+        XCTAssertTrue(app.buttons["Skip video"].waitForExistence(timeout: 5))
+        XCTAssertFalse(continueButton.isEnabled, "Continue must wait until Pip’s video finishes.")
+        let playbackFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == true"),
+            object: continueButton
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [playbackFinished], timeout: 12), .completed)
+        XCTAssertTrue(app.staticTexts["Meet your new companion"].exists)
+        continueButton.tap()
+        let pipNameHeading = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Name your companion")
+        ).firstMatch
+        XCTAssertTrue(pipNameHeading.waitForExistence(timeout: 5))
     }
 
     func testHomeChallengesStatsAndLauncherExposeAccessibleNavigation() {
@@ -71,6 +105,61 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         XCTAssertTrue(app.buttons["Fasting"].exists)
     }
 
+    func testPipHomeHeroFramesAdvanceWhileVisible() throws {
+        let app = XCUIApplication()
+        launchIntoHome(app)
+
+        let pipHero = app.descendants(matching: .any).matching(identifier: "pipHomeHero").firstMatch
+        XCTAssertTrue(pipHero.waitForExistence(timeout: 5))
+        let heroFrame = pipHero.frame
+        XCTAssertGreaterThan(heroFrame.width, 0)
+        XCTAssertGreaterThan(heroFrame.height, 0)
+
+        let firstCapture = app.screenshot()
+        Thread.sleep(forTimeInterval: 0.8)
+        let secondCapture = app.screenshot()
+
+        let firstHeroPixels = try XCTUnwrap(croppedHeroPNG(from: firstCapture, frame: heroFrame))
+        let secondHeroPixels = try XCTUnwrap(croppedHeroPNG(from: secondCapture, frame: heroFrame))
+        XCTAssertNotEqual(firstHeroPixels, secondHeroPixels, "Pip’s visible Home frame should advance between captures.")
+    }
+
+    func testStatsEmptyStateOpensQuickLogAndShowsSessionHeading() {
+        let app = XCUIApplication()
+        launchIntoHome(app)
+
+        app.buttons["Stats"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["stats-session-so-far"].waitForExistence(timeout: 5))
+
+        let openQuickLog = app.buttons["stats-empty-open-quick-log"]
+        if openQuickLog.waitForExistence(timeout: 3) {
+            openQuickLog.tap()
+        } else {
+            app.buttons["Open quick log"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["What would you like to add?"].waitForExistence(timeout: 5))
+        app.buttons["Close"].tap()
+
+        let statsCapture = XCTAttachment(screenshot: app.screenshot())
+        statsCapture.name = "PandaPlate Stats · session recap empty"
+        statsCapture.lifetime = .keepAlways
+        add(statsCapture)
+    }
+
+    func testRecentMealsOpensSessionOnlyEmptyState() {
+        let app = XCUIApplication()
+        launchIntoHome(app)
+
+        app.buttons["Quick actions"].tap()
+        XCTAssertTrue(app.buttons["Recent meals"].waitForExistence(timeout: 5))
+        app.buttons["Recent meals"].tap()
+
+        XCTAssertTrue(app.navigationBars["Quick repeat"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No recent meals yet"].exists)
+        XCTAssertTrue(app.staticTexts["From this session only. Copy opens a review; nothing is saved until you tap Save meal."].exists)
+        app.buttons["Close"].tap()
+    }
+
     func testTenCupWaterLogAllowsSizeSelectionAndOneStepUndo() {
         let app = XCUIApplication()
         launchIntoHome(app)
@@ -81,31 +170,44 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         XCTAssertTrue(app.buttons["waterServingSize_smallCup"].exists)
         XCTAssertTrue(app.buttons["waterServingSize_glass"].exists)
         XCTAssertTrue(app.buttons["waterServingSize_bottle"].exists)
-        let undo = app.buttons["Undo last water change"]
+        let undo = app.buttons["waterQuickLogUndo"]
         XCTAssertTrue(undo.exists)
 
+        let addCup = app.buttons["waterQuickLogAddCup"]
         cup0.tap()
+        XCTAssertTrue(addCup.isEnabled)
+        assertWaterTotal(0, in: app)
+        app.buttons["waterServingSize_smallCup"].tap()
+        assertWaterTotal(0, in: app, message: "Choosing a cup size alone must not change the water log.")
+        addCup.tap()
         XCTAssertTrue(undo.isEnabled)
-        assertWaterTotal(250, in: app)
+        assertWaterTotal(150, in: app)
         undo.tap()
         XCTAssertFalse(undo.isEnabled, "Undo should reverse only the latest edit.")
         XCTAssertEqual(undo.label, "Undo unavailable")
         assertWaterTotal(0, in: app)
 
-        app.buttons["waterServingSize_smallCup"].tap()
         cup0.tap()
+        addCup.tap()
         assertWaterTotal(150, in: app)
-        cup0.tap()
         app.buttons["waterServingSize_bottle"].tap()
+        assertWaterTotal(150, in: app, message: "Choosing a new size must not edit a filled cup until Update is pressed.")
+        XCTAssertTrue(addCup.isEnabled)
+        addCup.tap()
         assertWaterTotal(500, in: app)
 
         for index in 1..<10 {
             let cup = app.buttons["waterCupSlot\(index)"]
             XCTAssertTrue(cup.isEnabled)
             cup.tap()
+            XCTAssertTrue(addCup.isEnabled)
+            addCup.tap()
         }
         assertWaterTotal(5_000, in: app)
-        XCTAssertTrue(app.staticTexts["10 of 10 cups · session total"].exists)
+        XCTAssertTrue(app.staticTexts.containing(
+            NSPredicate(format: "label CONTAINS[c] %@", "10 of 10 cups logged")
+        ).firstMatch.exists)
+        XCTAssertFalse(addCup.isEnabled, "A filled ten-cup tray must prevent an eleventh addition.")
         XCTAssertTrue(undo.isEnabled)
         undo.tap()
         assertWaterTotal(4_500, in: app)
@@ -120,7 +222,7 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         app.buttons["Workout"].tap()
         XCTAssertTrue(app.navigationBars["Workout"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS[c] %@", "No calorie-burn estimates or exercise scoring")
+            NSPredicate(format: "label CONTAINS[c] %@", "Manual logs stay Unknown")
         ).firstMatch.exists)
         app.buttons["Brisk walk"].tap()
         app.buttons["60 min"].tap()
@@ -130,7 +232,7 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         ).firstMatch.waitForExistence(timeout: 5))
 
         app.buttons["Home"].tap()
-        XCTAssertTrue(app.staticTexts["No calorie estimates yet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
 
         app.buttons["Quick actions"].tap()
         app.buttons["Fasting"].tap()
@@ -156,49 +258,20 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
     }
 
     private func launchIntoHome(_ app: XCUIApplication) {
+        app.launchArguments = ["-ui-test-open-home"]
         app.launch()
-        let start = app.buttons["Get started"]
-        XCTAssertTrue(start.waitForExistence(timeout: 10))
-        start.tap()
+        XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 10))
+    }
 
-        for _ in 0..<6 {
-            let continueButton = app.buttons["Continue"]
-            XCTAssertTrue(continueButton.waitForExistence(timeout: 5))
-            continueButton.tap()
-        }
-        let skipIntro = app.buttons["Skip intro video"]
-        XCTAssertTrue(skipIntro.waitForExistence(timeout: 5))
-        skipIntro.tap()
-
-        let meetPip = app.buttons["Meet Pip"]
-        XCTAssertTrue(meetPip.waitForExistence(timeout: 5))
-        meetPip.tap()
-        app.buttons["Keep Pip’s name"].tap()
-        app.buttons["Skip for now"].tap() // user name
-        for _ in 0..<5 {
-            app.buttons["Continue"].tap()
-        }
-        app.buttons["Skip for now"].tap() // meal times
-        app.buttons["Skip for now"].tap() // fasting schedule
-        app.buttons["No preference for now"].tap() // eating locations
-        app.buttons["Skip for now"].tap() // diet preference
-        app.buttons["No restriction to note"].tap()
-        app.buttons["Skip for now"].tap() // water adequacy
-        app.buttons["No change for now"].tap()
-        app.buttons["Skip for now"].tap() // weekend routine
-        app.buttons["Skip for now"].tap() // cravings
-        app.buttons["Skip for now"].tap() // movement
-        selectFirstValue(in: app, identifier: "onboarding-snap-value-age")
-        app.buttons["Continue"].tap()
-        selectFirstValue(in: app, identifier: "onboarding-snap-value-height")
-        app.buttons["Continue"].tap()
-        selectFirstValue(in: app, identifier: "onboarding-snap-value-current-weight")
-        app.buttons["Continue"].tap()
-        selectFirstValue(in: app, identifier: "onboarding-snap-value-target-weight")
-        app.buttons["Continue"].tap()
-        XCTAssertTrue(app.staticTexts["Your setup"].waitForExistence(timeout: 5))
-        app.buttons["Finish setup"].tap()
-        XCTAssertTrue(app.buttons["Home"].waitForExistence(timeout: 5))
+    private func croppedHeroPNG(from screenshot: XCUIScreenshot, frame: CGRect) -> Data? {
+        let image = screenshot.image
+        guard let source = image.cgImage else { return nil }
+        let scale = image.scale
+        let pixelFrame = frame.applying(CGAffineTransform(scaleX: scale, y: scale))
+        let screenBounds = CGRect(x: 0, y: 0, width: source.width, height: source.height)
+        let cropRect = pixelFrame.intersection(screenBounds).integral
+        guard !cropRect.isNull, !cropRect.isEmpty, let cropped = source.cropping(to: cropRect) else { return nil }
+        return UIImage(cgImage: cropped).pngData()
     }
 
     private func selectFirstValue(in app: XCUIApplication, identifier: String, file: StaticString = #filePath, line: UInt = #line) {
@@ -214,12 +287,12 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         XCTAssertTrue(app.buttons["Continue"].isEnabled, file: file, line: line)
     }
 
-    private func assertWaterTotal(_ amount: Int, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+    private func assertWaterTotal(_ amount: Int, in app: XCUIApplication, message: String = "", file: StaticString = #filePath, line: UInt = #line) {
         let unformattedAmount = "\(amount) ml"
         let formattedAmount = "\(amount.formatted()) ml"
         let total = app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS[c] %@ OR label CONTAINS[c] %@", unformattedAmount, formattedAmount)
         ).firstMatch
-        XCTAssertTrue(total.waitForExistence(timeout: 5), "Expected water total to include \(amount) ml.", file: file, line: line)
+        XCTAssertTrue(total.waitForExistence(timeout: 5), message.isEmpty ? "Expected water total to include \(amount) ml." : message, file: file, line: line)
     }
 }

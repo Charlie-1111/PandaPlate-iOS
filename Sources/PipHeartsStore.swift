@@ -1,13 +1,14 @@
 import Foundation
 import Combine
 
-/// Pip's Little World meter (0–4). A prior day without a show-up mark can remove one heart.
+/// Pip's Little World meter (0–4). Opt-in only; missed/quiet days never change hearts.
 /// Food classification, calories, and saving a meal never add or remove hearts.
 @MainActor
 final class PipHeartsStore: ObservableObject {
     static let shared = PipHeartsStore()
     static let maxHearts = 4
     static let heartsKey = "pandaplate.pipHearts.count"
+    static let optInKey = "pandaplate.pipHearts.optInEnabled"
     static let lastEvaluatedDayKey = "pandaplate.pipHearts.lastNoShowEvaluatedDay"
     static let lastFoodLogDayKey = "pandaplate.pipHearts.lastFoodLogDay" // Legacy storage key; no longer affects hearts.
     static let lastDecayDayKey = "pandaplate.pipHearts.lastDecayDay" // Legacy storage key; no longer read.
@@ -17,6 +18,7 @@ final class PipHeartsStore: ObservableObject {
     private let calendar: Calendar
 
     @Published private(set) var hearts: Int
+    @Published private(set) var isOptInEnabled: Bool
 
     init(defaults: UserDefaults = .standard, calendar: Calendar = .current) {
         self.defaults = defaults
@@ -25,6 +27,16 @@ final class PipHeartsStore: ObservableObject {
             defaults.set(Self.maxHearts, forKey: Self.heartsKey)
         }
         hearts = min(Self.maxHearts, max(0, defaults.integer(forKey: Self.heartsKey)))
+        isOptInEnabled = defaults.bool(forKey: Self.optInKey)
+    }
+
+    func setOptInEnabled(_ enabled: Bool) {
+        isOptInEnabled = enabled
+        defaults.set(enabled, forKey: Self.optInKey)
+        if enabled && defaults.object(forKey: Self.heartsKey) == nil {
+            hearts = Self.maxHearts
+            defaults.set(hearts, forKey: Self.heartsKey)
+        }
     }
 
     /// Status line is descriptive; it never moralizes food or implies a medical score.
@@ -38,43 +50,10 @@ final class PipHeartsStore: ObservableObject {
         }
     }
 
-    /// Evaluate completed days only. A seen or explicitly frozen day is not a no-show.
-    /// The first run seeds yesterday, so installing/updating the app never creates a retroactive loss.
+    /// Legacy hook retained for call-site compatibility. Hearts never decay for missed or quiet days.
     func refreshDecayIfNeeded(now: Date = Date(), showUpDays: [SoftShowUpDay] = []) {
-        let today = calendar.startOfDay(for: now)
-        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return }
-        let yesterdayKey = Self.dayStamp(yesterday, calendar: calendar)
-
-        guard let lastKey = defaults.string(forKey: Self.lastEvaluatedDayKey),
-              let lastEvaluated = Self.date(fromDayStamp: lastKey, calendar: calendar) else {
-            defaults.set(yesterdayKey, forKey: Self.lastEvaluatedDayKey)
-            return
-        }
-
-        let lastDay = calendar.startOfDay(for: lastEvaluated)
-        guard lastDay < yesterday else { return }
-
-        var seenKinds: [String: SoftShowUpDayKind] = [:]
-        for day in showUpDays { seenKinds[day.dateKey] = day.kind }
-        var cursor = calendar.date(byAdding: .day, value: 1, to: lastDay) ?? yesterday
-        var quietDays = 0
-        var evaluated = 0
-        while cursor <= yesterday && evaluated < Self.maximumDaysToEvaluate {
-            let key = Self.dayStamp(cursor, calendar: calendar)
-            let kind = seenKinds[key]
-            if kind != .seen && kind != .frozen {
-                quietDays += 1
-            }
-            evaluated += 1
-            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
-            cursor = next
-        }
-
-        if quietDays > 0 {
-            hearts = max(0, hearts - quietDays)
-            defaults.set(hearts, forKey: Self.heartsKey)
-        }
-        defaults.set(yesterdayKey, forKey: Self.lastEvaluatedDayKey)
+        _ = now
+        _ = showUpDays
     }
 
     /// Legacy call retained for source compatibility. Meal saves never change hearts.

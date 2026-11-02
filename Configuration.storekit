@@ -1,0 +1,66 @@
+{
+  "identifier": "9B9F48F00A5145A28FC2FDCB",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [
+    {
+      "id": "AC1A0FA41D754D1DB6194442",
+      "localizations": [],
+      "name": "PandaPlate Premium",
+      "subscriptions": [
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "7.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "37A2EDF3ACF7480D89D54EF7",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Premium features billed monthly through Apple.",
+              "displayName": "Premium Monthly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.charlie.pandaplate.premium.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Premium Monthly",
+          "subscriptionGroupID": "AC1A0FA41D754D1DB6194442",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "34.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "747799A6206F49298D0E5018",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Premium features billed yearly through Apple.",
+              "displayName": "Premium Yearly",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.charlie.pandaplate.premium.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Premium Yearly",
+          "subscriptionGroupID": "AC1A0FA41D754D1DB6194442",
+          "type": "RecurringSubscription",
+          "winbackOffers": []
+        }
+      ]
+    }
+  ],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}

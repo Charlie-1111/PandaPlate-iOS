@@ -6,7 +6,7 @@ struct PandaPlateOnboardingDraft {
     var goal: WellnessGoal = .balanced
     var additionalGoals: Set<String> = []
     var loggingFamiliarity = "This is new to me"
-    var fastingFamiliarity: String? = "No"
+    var fastingFamiliarity: String?
 
     var companionName = "Pip"
     var userName = ""
@@ -30,7 +30,7 @@ struct PandaPlateOnboardingDraft {
     /// User opted into Apple Health during onboarding (or skipped).
     var healthKitConnected: Bool = false
     var healthKitSkipped: Bool = false
-    /// Precise current weight for BMI (tenths). Falls back to whole kg when nil.
+    /// Optional display precision for the session-only weight selector; never used for BMI or plan targets.
     var currentWeightKilogramsPrecise: Double?
 
     // Attribution (early after welcome)
@@ -39,24 +39,22 @@ struct PandaPlateOnboardingDraft {
     // Sex/gender before body metrics
     var sexGender: String?
 
-    // Required by the flow: each stays nil until the user explicitly selects it.
+    // Required session-only profile values; they are not used for derived calculations.
     var ageYears: Int?
     var heightCentimeters: Int?
     var currentWeightKilograms: Int?
     var targetWeightKilograms: Int?
 
-    // Goal pace after target weight: Slow / Steady / Faster
+    // Retained for current AppStore compatibility; no pace question or estimate is produced by onboarding.
     var goalPace: String?
 
-    // Linear weight-date estimate (nil when skipped for under-18 or incomplete inputs)
+    // Retained for current AppStore compatibility; no weight-date projection is produced by onboarding.
     var estimatedReachDate: Date?
     var estimatedReachSkippedUnder18 = false
 
-    // Account (Sign in with Apple / Google) — optional, session-only
+    // Apple identity fields required to complete onboarding and start a proxy session.
     var appleUserIdentifier: String?
     var appleEmail: String?
-    var googleUserIdentifier: String?
-    var googleEmail: String?
     var continuedWithoutAccount = false
 
     var sanitizedCompanionName: String {

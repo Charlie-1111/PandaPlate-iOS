@@ -17,6 +17,7 @@ private enum MealLogMode: Equatable {
 private enum RootSheet: Identifiable, Equatable {
     case quickLog
     case log(MealLogMode)
+    case mealRecents
     case settings
     case water
     case workout
@@ -29,6 +30,7 @@ private enum RootSheet: Identifiable, Equatable {
         case .log(.scan): return "log-scan"
         case .log(.photo): return "log-photo"
         case .log(.manual): return "log-manual"
+        case .mealRecents: return "meal-recents"
         case .settings: return "settings"
         case .water: return "water"
         case .workout: return "workout"
@@ -51,116 +53,13 @@ struct MainShellView: View {
     @State private var showSoftWall = false
 
     var body: some View {
-        Group {
-            switch tab {
-            case .home:
-                TodayDashboard(
-                    onQuickLogTap: { activeSheet = .quickLog },
-                    onSettingsTap: { activeSheet = .settings },
-                    onScanTap: { openMealLog(.scan) },
-                    onManualTap: { openMealLog(.manual) }
-                )
-            case .challenges:
-                ChallengesDashboard(
-                    onMealTap: { openMealLog(.manual) },
-                    onWaterTap: { activeSheet = .water },
-                    onWorkoutTap: { activeSheet = .workout }
-                )
-                .environmentObject(store)
-            case .stats:
-                ProgressDashboard(showingHistory: statsShowsHistory).id(statsShowsHistory).environmentObject(store)
-            }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            bottomBar
-        }
-        .background {
-            if tab == .home {
-                GeometryReader { proxy in
-                    Image("PandaPlateHomeWorldBackground")
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .clipped()
-                }
-                .ignoresSafeArea()
-                .accessibilityHidden(true)
-            } else {
-                PPColor.cream.ignoresSafeArea()
-            }
-        }
+        shellContent
         .fullScreenCover(isPresented: $showFoodScan) {
             FoodScanSheet()
                 .environmentObject(store)
         }
         .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .quickLog:
-                QuickLogSheet(
-                    onFoodCamera: {
-                        activeSheet = nil
-                        // Food → camera directly (FoodScanSheet opens on camera step).
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { openMealLog(.scan) }
-                    },
-                    onWaterTap: {
-                        activeSheet = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .water }
-                    },
-                    onWorkout: {
-                        activeSheet = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .workout }
-                    },
-                    onWeight: {
-                        activeSheet = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .weight }
-                    },
-                    onFasting: {
-                        activeSheet = nil
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .fasting }
-                    }
-                )
-                .environmentObject(store)
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-            case .log(let mode):
-                // Food Scan uses fullScreenCover (showFoodScan); sheet path is manual/other only.
-                LogMealSheet(initialMode: mode == .scan ? .manual : mode)
-                    .environmentObject(store)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            case .settings:
-                ProfileView(isPresentedAsSheet: true)
-                .environmentObject(store)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-            case .water:
-                WaterQuickLogSheet()
-                    .environmentObject(store)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            case .workout:
-                WorkoutPickerLogView(workouts: $store.workouts, onFinish: {
-                    activeSheet = nil
-                    statsShowsHistory = true
-                    tab = .stats
-                })
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            case .fasting:
-                FastingLogView(onFinish: {
-                    activeSheet = nil
-                    statsShowsHistory = true
-                    tab = .stats
-                })
-                    .environmentObject(store)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-            case .weight:
-                WeightLogSheet()
-                    .environmentObject(store)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
+            sheetContent(for: sheet)
         }
         // Soft wall: only when no other sheet is up (never cold-launch, never quota Unlock path).
         .sheet(isPresented: $showSoftWall, onDismiss: {
@@ -194,6 +93,136 @@ struct MainShellView: View {
         }
     }
 
+    private var shellContent: some View {
+        Group {
+            switch tab {
+            case .home:
+                TodayDashboard(onSettingsTap: { activeSheet = .settings })
+            case .challenges:
+                ChallengesDashboard(
+                    onMealTap: { openMealLog(.manual) },
+                    onWaterTap: { activeSheet = .water },
+                    onWorkoutTap: { activeSheet = .workout }
+                )
+                .environmentObject(store)
+            case .stats:
+                ProgressDashboard(
+                    showingHistory: statsShowsHistory,
+                    onOpenQuickLog: { activeSheet = .quickLog }
+                )
+                .id(statsShowsHistory)
+                .environmentObject(store)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            bottomBar
+        }
+        .background {
+            if tab == .home {
+                GeometryReader { proxy in
+                    Image("PandaPlateHomeWorldBackground")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipped()
+                }
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+            } else {
+                PPColor.cream.ignoresSafeArea()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sheetContent(for sheet: RootSheet) -> some View {
+            switch sheet {
+            case .quickLog:
+                QuickLogSheet(
+                    onFoodCamera: {
+                        activeSheet = nil
+                        // Food → camera directly (FoodScanSheet opens on camera step).
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { openMealLog(.scan) }
+                    },
+                    onManualTap: {
+                        activeSheet = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .log(.manual) }
+                    },
+                    onWaterTap: {
+                        activeSheet = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .water }
+                    },
+                    onRecentMeals: {
+                        activeSheet = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .mealRecents }
+                    },
+                    onWorkout: {
+                        activeSheet = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .workout }
+                    },
+                    onWeight: {
+                        activeSheet = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .weight }
+                    },
+                    onFasting: {
+                        activeSheet = nil
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { activeSheet = .fasting }
+                    }
+                )
+                .environmentObject(store)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            case .log(let mode):
+                // Food Scan uses fullScreenCover (showFoodScan); sheet path is manual/other only.
+                LogMealSheet(initialMode: mode == .scan ? .manual : mode)
+                    .environmentObject(store)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            case .mealRecents:
+                SessionMealRecentsView(
+                    meals: store.meals,
+                    onSave: { draft in
+                        store.addMeal(name: draft.name, calories: draft.calories, imageData: nil)
+                    },
+                    onClose: { activeSheet = nil }
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            case .settings:
+                ProfileView(isPresentedAsSheet: true)
+                .environmentObject(store)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            case .water:
+                WaterQuickLogSheet()
+                    .environmentObject(store)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            case .workout:
+                WorkoutPickerLogView(workouts: $store.workouts, onFinish: {
+                    activeSheet = nil
+                    statsShowsHistory = true
+                    tab = .stats
+                })
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            case .fasting:
+                FastingLogView(onFinish: {
+                    activeSheet = nil
+                    statsShowsHistory = true
+                    tab = .stats
+                })
+                    .environmentObject(store)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            case .weight:
+                WeightLogSheet()
+                    .environmentObject(store)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+    }
+
     private func presentSoftWallIfIdle() {
         guard firstSuccess.shouldPresentSoftWall else { return }
         guard activeSheet == nil else { return }
@@ -222,38 +251,51 @@ struct MainShellView: View {
     }
 
     private var bottomBar: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 2) {
-                tabButton(.home, title: "Home", symbol: "house.fill")
-                tabButton(.challenges, title: "Challenges", symbol: "star.fill")
-                tabButton(.stats, title: "Stats", symbol: "chart.bar.fill")
-            }
-            .padding(4)
-            .frame(maxWidth: 248, minHeight: 62)
-            .background(Color(red: 0.93, green: 0.93, blue: 0.95), in: Capsule())
-            .overlay(Capsule().stroke(Color.white.opacity(0.9), lineWidth: 1))
-            .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+        GeometryReader { proxy in
+            let horizontalInset: CGFloat = 16
+            let plusSize: CGFloat = 68
+            let gap: CGFloat = 12
+            let availablePillWidth = max(0, proxy.size.width - (horizontalInset * 2) - plusSize - gap)
+            let pillWidth = min(256, availablePillWidth)
 
-            Spacer(minLength: 18)
+            HStack(spacing: gap) {
+                HStack(spacing: 2) {
+                    tabButton(.home, title: "Home", symbol: "house.fill")
+                    tabButton(.challenges, title: "Challenges", symbol: "star.fill")
+                    tabButton(.stats, title: "Stats", symbol: "chart.bar.fill")
+                }
+                .padding(4)
+                .frame(width: pillWidth)
+                .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 84 : 64)
+                .background(PPColor.card, in: Capsule())
+                .overlay(Capsule().stroke(PPColor.line, lineWidth: 1))
+                .shadow(color: PPColor.forestDeep.opacity(0.12), radius: 9, y: 3)
 
-            Button { activeSheet = .quickLog } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 27, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 68, height: 68)
-                    .background(BitePalColor.ctaBlack, in: Circle())
-                    .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
-                    .contentShape(Circle())
+                Spacer(minLength: 0)
+
+                Button { activeSheet = .quickLog } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 27, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: plusSize, height: plusSize)
+                        .background(PPColor.forestDeep, in: Circle())
+                        .shadow(color: PPColor.forestDeep.opacity(0.22), radius: 8, y: 3)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Quick actions")
+                .accessibilityHint("Opens meal, water, workout, weight and fasting actions")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Quick actions")
-            .accessibilityHint("Opens meal, water, workout, weight and fasting actions")
+            .padding(.horizontal, horizontalInset)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .background(PPColor.card.opacity(0.96))
+            .overlay(alignment: .top) {
+                Rectangle().fill(PPColor.line.opacity(0.9)).frame(height: 1)
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 5)
-        .padding(.bottom, 8)
-        .frame(maxWidth: .infinity)
-        .background(Color.clear)
+        .frame(height: dynamicTypeSize.isAccessibilitySize ? 108 : 88)
     }
 
     private func tabButton(_ item: RootTab, title: String, symbol: String) -> some View {
@@ -262,18 +304,25 @@ struct MainShellView: View {
             if item == .stats { statsShowsHistory = false }
             tab = item
         } label: {
-            ZStack {
-                if selected {
-                    Circle()
-                        .fill(Color.white)
-                        .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
-                        .frame(width: 46, height: 46)
+            VStack(spacing: 1) {
+                ZStack {
+                    if selected {
+                        Circle()
+                            .fill(PPColor.forestDeep)
+                            .frame(width: 36, height: 36)
+                    }
+                    Image(systemName: symbol)
+                        .font(.system(size: 18, weight: selected ? .bold : .semibold))
+                        .foregroundStyle(selected ? .white : PPColor.muted)
                 }
-                Image(systemName: symbol)
-                    .font(.system(size: 20, weight: selected ? .bold : .semibold))
-                    .foregroundStyle(selected ? BitePalColor.ctaBlack : Color(red: 0.69, green: 0.69, blue: 0.72))
+                Text(title)
+                    .font(.system(size: 11, weight: selected ? .bold : .semibold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(selected ? PPColor.forestDeep : PPColor.muted)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.75)
+                    .multilineTextAlignment(.center)
             }
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: .infinity, minHeight: dynamicTypeSize.isAccessibilitySize ? 76 : 60)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -311,11 +360,11 @@ private struct ChallengesDashboard: View {
                 )
                 challengeCard(
                     title: "Take a water break",
-                    detail: "Record a cup, glass or bottle you actually drank.",
+                    detail: "Choose a size, then tap Add one cup to log what you drank.",
                     symbol: "drop.fill",
                     progress: PandaPlateChallengeProgress.waterCups(in: store),
                     target: 1,
-                    actionTitle: "Choose a size",
+                    actionTitle: "Log one cup",
                     action: onWaterTap
                 )
                 challengeCard(
@@ -392,10 +441,7 @@ private struct ChallengesDashboard: View {
 private struct TodayDashboard: View {
     @EnvironmentObject private var store: AppStore
     @ObservedObject private var premium = PremiumAccess.shared
-    let onQuickLogTap: () -> Void
     let onSettingsTap: () -> Void
-    let onScanTap: () -> Void
-    let onManualTap: () -> Void
 
     @State private var showNutritionPaywall = false
 
@@ -418,13 +464,11 @@ private struct TodayDashboard: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 17) {
                 topBar
-                PipWorldDashboard(onQuickLogTap: onQuickLogTap)
+                PipWorldDashboard()
                     .environmentObject(store)
                 sessionSummary
                 waterLog
                 advancedNutritionCard
-                quickActions
-                missionCard
                 Text("PandaPlate is a gentle wellness tracker, not medical advice.")
                     .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
                     .foregroundStyle(PPColor.muted)
@@ -443,15 +487,15 @@ private struct TodayDashboard: View {
 
     private var topBar: some View {
         HStack(spacing: 11) {
-            PipMascot(size: 50)
+            PipMascot(size: 46)
                 .padding(4)
-                .background(PPColor.peach, in: Circle())
+                .background(PPColor.softBlue, in: Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(store.userName.isEmpty ? greeting + "!" : "\(greeting), \(store.userName)!")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(PPColor.muted)
-                Text("Home")
-                    .font(.system(size: 28, weight: .black, design: .rounded, relativeTo: .largeTitle))
+                Text("Today")
+                    .font(.system(size: 26, weight: .black, design: .rounded, relativeTo: .largeTitle))
                     .foregroundStyle(PPColor.ink)
             }
             Spacer()
@@ -492,10 +536,10 @@ private struct TodayDashboard: View {
                 .foregroundStyle(BitePalColor.selectGreen)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Movement")
-                    .font(.system(size: 10, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.ink)
                 Text(line)
-                    .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
             }
             Spacer(minLength: 0)
@@ -518,10 +562,10 @@ private struct TodayDashboard: View {
                 .foregroundStyle(PPColor.coralInk)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 10, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.ink)
                 Text(value)
-                    .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
             }
             Spacer(minLength: 0)
@@ -531,40 +575,7 @@ private struct TodayDashboard: View {
         .background(PPColor.card, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
     }
 
-    private var quickActions: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SectionTitle(title: "Quick actions")
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 9) {
-                quickAction("Food", symbol: "camera.fill", detail: "Opens camera to scan", action: onScanTap)
-                quickAction("Quick log", symbol: "plus.circle.fill", detail: "Food, water, workout, weight, fasting", action: onQuickLogTap)
-            }
-        }
-    }
-
-    private func quickAction(_ title: String, symbol: String, detail: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(PPColor.coralInk)
-                Text(title)
-                    .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.ink)
-                Text(detail)
-                    .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
-                    .foregroundStyle(PPColor.muted)
-            }
-            .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
-            .padding(12)
-            .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityHint(detail)
-    }
-
-    /// BitePal-style Advanced nutrition analysis. Premium: honest session data. Free: locked overlay.
+    /// Premium shows the current session snapshot only; it does not imply analysis or targets.
     /// Macros stay Unknown unless stored on meals — never invent sample protein/carbs/fat.
     private var advancedNutritionCard: some View {
         ZStack {
@@ -579,8 +590,8 @@ private struct TodayDashboard: View {
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: premium.isPremium ? .contain : .ignore)
         .accessibilityLabel(premium.isPremium
-            ? "Advanced nutrition analysis for this session"
-            : "Session nutrition snapshot locked. Optional Premium unlock. Food recognition isn’t connected in this build.")
+            ? "Premium session nutrition snapshot"
+            : "Session nutrition snapshot locked. Optional Premium unlock. Food Scan is optional with consent; estimates stay editable.")
     }
 
     private var nutritionUnlockedContent: some View {
@@ -588,7 +599,7 @@ private struct TodayDashboard: View {
             VStack(alignment: .leading, spacing: 15) {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("ADVANCED NUTRITION ANALYSIS")
+                        Text("SESSION NUTRITION SNAPSHOT")
                             .font(.system(size: 9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                             .tracking(1.1).foregroundStyle(PPColor.muted)
                         Text("This session")
@@ -642,12 +653,12 @@ private struct TodayDashboard: View {
         VStack(spacing: 12) {
             Image(systemName: "lock.fill")
                 .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(PPColor.coralInk)
+                .foregroundStyle(PPColor.forestDeep)
             Text("Session nutrition snapshot")
-                .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .body))
                 .foregroundStyle(PPColor.ink)
-            Text("See logged calorie estimates and session water with Premium. Unknown nutrition stays unknown. Food recognition isn’t connected in this build.")
-                .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+            Text("See logged calorie estimates and session water with Premium. Unknown nutrition stays unknown; no targets are calculated.")
+                .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
                 .foregroundStyle(PPColor.muted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 12)
@@ -655,18 +666,18 @@ private struct TodayDashboard: View {
                 showNutritionPaywall = true
             } label: {
                 Text("Unlock with Premium")
-                    .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(PPColor.coralInk, in: Capsule())
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(PPColor.forestDeep, in: Capsule())
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
-            .accessibilityHint("Opens a dismissible Premium sheet. Free continues either way.")
+            .accessibilityHint("Opens an optional Premium sheet. Free logging stays available.")
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(PPColor.cream.opacity(0.72))
+        .background(PPColor.cream.opacity(0.94))
     }
 
     private var caloriesHonestyLine: String {
@@ -708,29 +719,6 @@ private struct TodayDashboard: View {
             .environmentObject(store)
     }
 
-    private var missionCard: some View {
-        Button(action: onQuickLogTap) {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(PPColor.coral)
-                    .frame(width: 42, height: 42)
-                    .background(PPColor.peach, in: RoundedRectangle(cornerRadius: 14))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Quick log")
-                        .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption)).foregroundStyle(PPColor.ink)
-                    Text("Meal, water, workout or fasting")
-                        .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2)).foregroundStyle(PPColor.muted)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(PPColor.muted)
-            }
-            .padding(13)
-            .background(PPColor.mint.opacity(0.48), in: RoundedRectangle(cornerRadius: 19))
-        }
-        .buttonStyle(.plain)
-    }
-
     private func nutritionChip(_ title: String, _ value: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title).font(.system(size: 9, weight: .medium, design: .rounded, relativeTo: .caption2)).foregroundStyle(PPColor.muted)
@@ -744,11 +732,9 @@ private struct TodayDashboard: View {
 }
 
 private struct PipWorldDashboard: View {
-    let onQuickLogTap: () -> Void
     @EnvironmentObject private var store: AppStore
     @ObservedObject private var premium = PremiumAccess.shared
     @ObservedObject private var lookStore = PipLookStore.shared
-    @ObservedObject private var heartsStore = PipHeartsStore.shared
 
     private static let greetings = [
         "What sounds good right now?",
@@ -756,9 +742,10 @@ private struct PipWorldDashboard: View {
     ]
 
     @State private var greetingIndex = 0
-    @State private var phase: PipRitualPhase = .welcome
-    @State private var celebrateLove = false
+    @State private var homeMoment: PipHomeMoment = .idle
+    @State private var bubbleLine: String?
     @State private var showLookPaywall = false
+    @State private var cheerResetTask: Task<Void, Never>?
 
     private var companionDisplayName: String {
         let trimmed = store.companionName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -776,119 +763,58 @@ private struct PipWorldDashboard: View {
     private var selectedLook: PipLook { lookStore.selectedLook }
 
     private var heroStillName: String {
-        selectedLook.stillForPhase(phase, celebrateLove: celebrateLove)
+        selectedLook.stillAssetName
     }
 
     private var lifeLoopName: String {
-        PipLook.lifeLoopResource(for: phase, celebrateLove: celebrateLove)
+        PipLook.homeLoopResource(for: homeMoment)
     }
 
     private var captionLine: String {
-        switch phase {
-        case .welcome:
-            return greetingLine
-        case .saidHi:
-            return softResponse
-        case .napping:
-            return "Pip’s napping. Come back when you’re ready."
-        }
+        bubbleLine ?? greetingLine
     }
 
     var body: some View {
-        // Embedded on Home (no nested ScrollView) — BitePal puts the pet on Home.
-        VStack(alignment: .leading, spacing: 16) {
-                Text("Pip’s little world")
-                    .font(.system(size: 20, weight: .black, design: .rounded, relativeTo: .title3))
-                    .foregroundStyle(PPColor.ink)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Pip’s Place")
+                .font(.system(size: 20, weight: .black, design: .rounded, relativeTo: .title3))
+                .foregroundStyle(PPColor.ink)
 
-                VStack(spacing: 10) {
+            VStack(spacing: 10) {
+                Button(action: tapPipHero) {
                     ritualHero
-                    Text(captionLine)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.ink)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(PPColor.card.opacity(0.92), in: Capsule())
-                        .accessibilityLabel(captionLine)
-
-                    pipHeartsRow
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 8)
-                .padding(.bottom, 6)
+                .buttonStyle(.plain)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityHint("Plays a short hello from Pip")
 
-                dressPipSection
-
-                PPCard {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("A soft hello")
-                            .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .body))
-                            .foregroundStyle(PPColor.ink)
-                        Text("Just a little hello from \(companionDisplayName) when you want company.")
-                            .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                            .foregroundStyle(PPColor.muted)
-
-                        if phase != .saidHi {
-                            Button(action: sayHi) {
-                                Text("Say hi to Pip")
-                                    .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity, minHeight: 48)
-                                    .background(PPColor.coralInk, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Say hi to Pip")
-                        } else {
-                            Text(softResponse)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded, relativeTo: .subheadline))
-                                .foregroundStyle(PPColor.coralInk)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-
-                        if phase != .napping {
-                            Button(action: startNap) {
-                                Text("Let Pip rest")
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                                    .foregroundStyle(PPColor.muted)
-                                    .frame(maxWidth: .infinity, minHeight: 44)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Let Pip rest")
-                        } else {
-                            Button(action: wakeGently) {
-                                Text("I’m back")
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                                    .foregroundStyle(PPColor.coralInk)
-                                    .frame(maxWidth: .infinity, minHeight: 44)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("I’m back")
-                        }
-
-                        Button(action: onQuickLogTap) {
-                            Label("Log something gently", systemImage: "plus.circle.fill")
-                                .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
-                                .foregroundStyle(PPColor.coralInk)
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .background(PPColor.peach.opacity(0.72), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Text("Free ritual · no Premium gate · at your own pace.")
-                    .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
-                    .foregroundStyle(PPColor.muted)
-                    .frame(maxWidth: .infinity)
+                Text(captionLine)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.ink)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(PPColor.card.opacity(0.92), in: Capsule())
+                    .accessibilityLabel(captionLine)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 4)
+            .padding(.bottom, 4)
+
+            dressPipSection
+        }
         .onAppear {
             lookStore.reconcileWithPremium()
-            heartsStore.refreshDecayIfNeeded(showUpDays: SoftShowUpStore.shared.days)
-            rotateGreetingOnAppear()
+            greetingIndex = Int.random(in: 0..<Self.greetings.count)
         }
         .onChange(of: premium.isPremium) { _, _ in
             lookStore.reconcileWithPremium()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pandaPlateMealSavedSuccessfully)) { _ in
+            playMealCheer()
+        }
+        .onDisappear {
+            cheerResetTask?.cancel()
         }
         .sheet(isPresented: $showLookPaywall) {
             PremiumPaywallView(isSoftPrompt: true)
@@ -898,54 +824,29 @@ private struct PipWorldDashboard: View {
     @ViewBuilder
     private var ritualHero: some View {
         if selectedLook == .base {
+            PipFrameSequenceView(
+                resourceName: lifeLoopName,
+                stillAssetName: selectedLook.homeStillAsset(for: homeMoment),
+                size: 220,
+                accessibilityLabel: PipLook.homeAccessibilityLabel(for: homeMoment, companionName: companionDisplayName),
+                playsOnce: homeMoment != .idle,
+                onOneShotFinished: finishOneShotMoment
+            )
+            .id("\(lifeLoopName)-\(homeMoment)-\(selectedLook.rawValue)")
+            .accessibilityIdentifier("pipHomeHero")
+        } else {
             PipLifeLoopView(
                 resourceName: lifeLoopName,
-                stillAssetName: heroStillName,
-                size: 200,
-                accessibilityLabel: heroAccessibilityLabel
+                stillAssetName: selectedLook.homeStillAsset(for: homeMoment),
+                size: 220,
+                accessibilityLabel: PipLook.homeAccessibilityLabel(for: homeMoment, companionName: companionDisplayName),
+                playsOnce: homeMoment != .idle,
+                onOneShotFinished: finishOneShotMoment,
+                usesResourceFrames: false
             )
-        } else {
-            Image(heroStillName)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 200, height: 200)
-                .accessibilityLabel("\(selectedLook.displayName) Pip look")
-                .accessibilityAddTraits(.isImage)
+            .id("\(lifeLoopName)-\(homeMoment)-\(selectedLook.rawValue)")
+            .accessibilityIdentifier("pipHomeHero")
         }
-    }
-
-    private var heroAccessibilityLabel: String {
-        switch phase {
-        case .welcome:
-            return "\(companionDisplayName) waves hello in the forest garden"
-        case .saidHi:
-            return "\(companionDisplayName) is glad you showed up"
-        case .napping:
-            return "\(companionDisplayName) is napping"
-        }
-    }
-
-    private var pipHeartsRow: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 6) {
-                ForEach(0..<PipHeartsStore.maxHearts, id: \.self) { index in
-                    Image(systemName: index < heartsStore.hearts ? "heart.fill" : "heart")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(index < heartsStore.hearts ? PPColor.coral : PPColor.line)
-                        .accessibilityHidden(true)
-                }
-            }
-            Text(heartsStore.softStatusLine)
-                .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
-                .foregroundStyle(PPColor.ink.opacity(0.78))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(PPColor.card.opacity(0.92), in: Capsule())
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Pip hearts \(heartsStore.hearts) of \(PipHeartsStore.maxHearts). \(heartsStore.softStatusLine)")
     }
 
     private var dressPipSection: some View {
@@ -1026,282 +927,44 @@ private struct PipWorldDashboard: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    private func rotateGreetingOnAppear() {
-        greetingIndex = Int.random(in: 0..<Self.greetings.count)
-        if phase == .napping { return }
-        if phase != .saidHi {
-            phase = .welcome
-        }
-    }
-
-    private func sayHi() {
-        celebrateLove = Bool.random()
-        phase = .saidHi
-        // Soft Show-Up: Pip saw you today (not a streak).
+    private func tapPipHero() {
+        guard homeMoment == .idle else { return }
+        cheerResetTask?.cancel()
+        homeMoment = .waving
+        bubbleLine = softResponse
         SoftShowUpStore.shared.markSeen()
-        // First Pip ritual success — soft wall + review milestone (Free path stays open).
         FirstSuccessMoments.shared.notePipRitualCompleted()
     }
 
-    private func startNap() {
-        phase = .napping
+    private func playMealCheer() {
+        guard homeMoment == .idle else { return }
+        cheerResetTask?.cancel()
+        homeMoment = .cheering
+        bubbleLine = "Nice save — \(companionDisplayName) is cheering!"
     }
 
-    private func wakeGently() {
-        greetingIndex = Int.random(in: 0..<Self.greetings.count)
-        phase = .welcome
-    }
-}
-
-private struct ProgressDashboard: View {
-    private enum Section: String, CaseIterable {
-        case progress = "Overview"
-        case history = "History"
-    }
-
-    @EnvironmentObject private var store: AppStore
-    @ObservedObject private var premium = PremiumAccess.shared
-    @State private var selectedSection: Section
-    @State private var showPaywall = false
-    @State private var exportError: String?
-    @State private var showSoftShowUpHistory = false
-
-    init(showingHistory: Bool) {
-        _selectedSection = State(initialValue: showingHistory ? .history : .progress)
-    }
-
-    var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 17) {
-                Text("Stats")
-                    .font(.system(size: 27, weight: .black, design: .rounded, relativeTo: .largeTitle)).foregroundStyle(PPColor.ink)
-                HStack(spacing: 8) {
-                    ForEach(Section.allCases, id: \.self) { section in
-                        let isSelected = selectedSection == section
-                        Button { selectedSection = section } label: {
-                            Text(section.rawValue)
-                                .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                                .foregroundStyle(isSelected ? .white : PPColor.ink)
-                                .frame(maxWidth: .infinity, minHeight: 44)
-                                .background(isSelected ? PPColor.coralInk : PPColor.card, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(section.rawValue)
-                        .accessibilityValue(isSelected ? "Selected" : "Not selected")
-                        .accessibilityAddTraits(isSelected ? .isSelected : [])
-                    }
-                }
-                if selectedSection == .progress {
-                    progressContent
-                } else {
-                    historyContent
-                }
-            }
-            .padding(18)
-            .padding(.bottom, 18)
+    private func finishOneShotMoment() {
+        guard homeMoment != .idle else { return }
+        if homeMoment == .cheering {
+            cheerResetTask?.cancel()
         }
-        .background(PPColor.cream)
+        returnToIdleAfterOneShot()
     }
 
-    private var progressContent: some View {
-        let mealsWithCalories = store.meals.filter { $0.calories != nil }.count
-        let mealsWithoutCalories = store.meals.count - mealsWithCalories
-        let movementMinutes = store.workouts.reduce(0) { $0 + $1.durationMinutes }
-        let workoutCalories = store.workouts.compactMap(\.activeEnergyKcal).reduce(0, +)
-        let latestWeight = store.weightLogs.max { $0.time < $1.time }
-        let fastingSeconds = store.fastingEntries.reduce(0) { $0 + $1.durationSeconds }
-
-        return VStack(alignment: .leading, spacing: 15) {
-            Text("Current session only · these totals change when you log something. They clear when the app closes.")
-                .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                .foregroundStyle(PPColor.muted)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if store.meals.isEmpty && store.waterML == 0 && store.workouts.isEmpty && store.weightLogs.isEmpty && store.fastingEntries.isEmpty && store.fastingStartedAt == nil {
-                PPCard {
-                    Text("No entries yet. Stats will fill in from things you actually log.")
-                        .font(.system(size: 15, weight: .semibold, design: .rounded, relativeTo: .body))
-                        .foregroundStyle(PPColor.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+    private func returnToIdleAfterOneShot() {
+        homeMoment = .idle
+        if bubbleLine == softResponse {
+            // Keep wave greeting briefly, then restore rotating line.
+            Task {
+                try? await Task.sleep(for: .seconds(2.5))
+                await MainActor.run {
+                    if homeMoment == .idle { bubbleLine = nil }
                 }
             }
-
-            sessionStatCard(
-                title: "Meals",
-                value: "\(store.meals.count)",
-                detail: "\(mealsWithCalories) with a saved calorie estimate · \(mealsWithoutCalories) unknown",
-                symbol: "fork.knife",
-                tint: PPColor.coralInk
-            )
-            sessionStatCard(
-                title: "Saved calorie estimates",
-                value: store.caloriesEaten.map { "\($0.formatted()) kcal" } ?? "Unknown",
-                detail: store.caloriesEaten == nil ? "No estimate has been saved this session." : "Sum of saved meal estimates; no target is calculated.",
-                symbol: "sum",
-                tint: PPColor.coralInk
-            )
-            sessionStatCard(
-                title: "Water",
-                value: "\(store.waterML.formatted()) ml",
-                detail: "Session total from your water logs.",
-                symbol: "drop.fill",
-                tint: Color(red: 0.20, green: 0.48, blue: 0.90)
-            )
-            sessionStatCard(
-                title: "Movement",
-                value: "\(store.workouts.count) activities · \(movementMinutes) min",
-                detail: workoutCalories > 0 ? "Apple Health recorded \(workoutCalories.formatted()) kcal for these session logs." : "No calorie-burn estimate is available for these logs.",
-                symbol: "figure.walk",
-                tint: Color(red: 0.36, green: 0.63, blue: 0.41)
-            )
-            sessionStatCard(
-                title: "Weight check-ins",
-                value: "\(store.weightLogs.count)",
-                detail: latestWeight.map { "Most recent: \(String(format: "%.1f", $0.kilograms)) kg, \($0.time.formatted(date: .abbreviated, time: .shortened))." } ?? "No weight check-in logged this session.",
-                symbol: "scalemass.fill",
-                tint: Color(red: 0.48, green: 0.42, blue: 0.67)
-            )
-            sessionStatCard(
-                title: "Completed fasting logs",
-                value: "\(store.fastingEntries.count)",
-                detail: fastingSeconds > 0 ? "Total recorded time: \(fastingSeconds / 3_600)h \((fastingSeconds % 3_600) / 60)m." : "No completed fasting time logs this session.",
-                symbol: "moon.stars.fill",
-                tint: Color(red: 0.45, green: 0.38, blue: 0.72)
-            )
+        } else {
+            bubbleLine = nil
         }
     }
-
-    private func sessionStatCard(title: String, value: String, detail: String, symbol: String, tint: Color) -> some View {
-        PPCard {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: symbol)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .frame(width: 40, height: 40)
-                    .background(PPColor.peach.opacity(0.6), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.muted)
-                    Text(value)
-                        .font(.system(size: 19, weight: .black, design: .rounded, relativeTo: .title3))
-                        .foregroundStyle(PPColor.ink)
-                    Text(detail)
-                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
-                        .foregroundStyle(PPColor.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var historyContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Current session only · clears when the app closes")
-                .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
-                .foregroundStyle(PPColor.muted)
-            PPCard {
-                SoftShowUpPresenceCard(
-                    isPremium: premium.isPremium,
-                    onOpenHistory: { showSoftShowUpHistory = true },
-                    onFreeTap: { showPaywall = true }
-                )
-                if SoftShowUpStore.shared.seenCount > 0 && SoftShowUpStore.shared.isSeenToday {
-                    SoftShowUpRepairBanner()
-                }
-            }
-            .sheet(isPresented: $showSoftShowUpHistory) {
-                SoftShowUpHistoryView()
-            }
-            PPCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    SessionCSVExportButton(
-                        entries: WeekLogExport.rows(from: store),
-                        isPremium: premium.isPremium,
-                        onFreeTap: { showPaywall = true },
-                        onError: { exportError = $0 }
-                    )
-                    if let exportError {
-                        Text(exportError)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
-                            .foregroundStyle(PPColor.coralInk)
-                    }
-                }
-            }
-            .sheet(isPresented: $showPaywall) {
-                PremiumPaywallView()
-            }
-            if store.meals.isEmpty && store.waterML == 0 && store.workouts.isEmpty && store.fastingEntries.isEmpty && store.fastingStartedAt == nil {
-                PPCard {
-                    Text("No entries logged in this session yet.")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.ink)
-                }
-            }
-            ForEach(store.meals) { meal in
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Meal · \(meal.name)")
-                            .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                            .foregroundStyle(PPColor.ink)
-                        Text(meal.time.formatted(date: .omitted, time: .shortened))
-                            .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
-                            .foregroundStyle(PPColor.muted)
-                    }
-                    Spacer()
-                    Text(meal.calories.map { "\($0) kcal" } ?? "No estimate")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
-                        .foregroundStyle(PPColor.ink)
-                }
-                .padding(13)
-                .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            if store.waterML > 0 {
-                HStack {
-                    Label("Water · session total", systemImage: "drop.fill")
-                        .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.ink)
-                    Spacer()
-                    Text("\(store.waterML) ml")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
-                        .foregroundStyle(PPColor.muted)
-                }
-                .padding(13)
-                .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            ForEach(store.workouts) { workout in
-                Label("Workout · \(workout.activity) · \(workout.durationMinutes) min", systemImage: "figure.walk")
-                    .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.ink)
-                    .padding(13)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            ForEach(store.fastingEntries) { entry in
-                let durationText = entry.durationSeconds < 60
-                    ? "under 1 min"
-                    : "\(entry.durationSeconds / 3_600)h \((entry.durationSeconds % 3_600) / 60)m"
-                Label("Fasting log · \(durationText)", systemImage: "moon.stars.fill")
-                    .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.ink)
-                    .padding(13)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            if let started = store.fastingStartedAt {
-                Label("Fasting session started · \(started.formatted(date: .omitted, time: .shortened))", systemImage: "moon.stars.fill")
-                    .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.ink)
-                    .padding(13)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-        }
-    }
-
 }
 
 private struct ProfileView: View {
@@ -1735,12 +1398,13 @@ private struct ProfileView: View {
     private var privacyCard: some View {
         PPCard(padding: 16) {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Your data stays here", systemImage: "lock.fill")
+                Label("Your data, on your terms", systemImage: "lock.fill")
                     .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(PPColor.ink)
-                Text("Meals, photos, water and preferences stay in memory only and reset when the app closes. Nothing syncs to an account or cloud.")
+                Text("Most logs and preferences stay in session memory. With fresh consent, live Food Scan sends the selected photo through PandaPlate’s proxy to DeepSeek for recognition; a photo used only for a manual note stays on-device. Nothing else syncs to a PandaPlate account. See Privacy Notice for provider details.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                 PandaPlateLegalLinksRow(style: .profile, presentedDocument: $presentedLegalDocument)
                     .padding(.top, 4)
             }
@@ -2050,7 +1714,9 @@ private struct QuickLogSheet: View {
     @Environment(\.dismiss) private var dismiss
     /// Food opens camera-first FoodScanSheet directly (gallery still reachable inside that UI).
     let onFoodCamera: () -> Void
+    let onManualTap: () -> Void
     let onWaterTap: () -> Void
+    let onRecentMeals: () -> Void
     let onWorkout: () -> Void
     let onWeight: () -> Void
     let onFasting: () -> Void
@@ -2067,17 +1733,17 @@ private struct QuickLogSheet: View {
     private var tiles: [ActionTile] {
         [
             ActionTile(id: "food", title: "Food", subtitle: "Camera → log", symbol: "camera.fill",
-                       tint: Color(red: 0.22, green: 0.55, blue: 0.32),
-                       fill: Color(red: 0.82, green: 0.93, blue: 0.84)),
+                       tint: PPColor.forest, fill: PPColor.sage),
+            ActionTile(id: "manual-food", title: "Manual food", subtitle: "Add without a photo", symbol: "square.and.pencil",
+                       tint: PPColor.forestDeep, fill: PPColor.selectedWash),
             ActionTile(id: "water", title: "Water", subtitle: "Add a glass", symbol: "drop.fill",
-                       tint: Color(red: 0.20, green: 0.48, blue: 0.90),
-                       fill: Color(red: 0.82, green: 0.90, blue: 0.98)),
+                       tint: PPColor.forest, fill: PPColor.softBlue),
+            ActionTile(id: "recent-meals", title: "Recent meals", subtitle: "Copy & review", symbol: "arrow.clockwise",
+                       tint: PPColor.forestDeep, fill: PPColor.sage),
             ActionTile(id: "workout", title: "Workout", subtitle: "Log activity", symbol: "figure.walk",
-                       tint: Color(red: 0.36, green: 0.55, blue: 0.28),
-                       fill: Color(red: 0.88, green: 0.94, blue: 0.82)),
+                       tint: PPColor.forest, fill: PPColor.cream),
             ActionTile(id: "weight", title: "Weight", subtitle: "Check in", symbol: "scalemass.fill",
-                       tint: Color(red: 0.85, green: 0.40, blue: 0.32),
-                       fill: Color(red: 0.98, green: 0.88, blue: 0.84)),
+                       tint: PPColor.accentCoral, fill: PPColor.softBlue),
         ]
     }
 
@@ -2107,9 +1773,10 @@ private struct QuickLogSheet: View {
                                         .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                                         .foregroundStyle(PPColor.muted)
                                 }
-                                .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
+                                .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
                                 .padding(14)
                                 .background(tile.fill, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(tile.title)
@@ -2117,7 +1784,6 @@ private struct QuickLogSheet: View {
                         }
                     }
 
-                    // Secondary BitePal-adjacent action
                     Button {
                         dismiss()
                         onFasting()
@@ -2125,7 +1791,7 @@ private struct QuickLogSheet: View {
                         HStack(spacing: 12) {
                             Image(systemName: "moon.stars.fill")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(Color(red: 0.45, green: 0.38, blue: 0.72))
+                                .foregroundStyle(PPColor.forestDeep)
                                 .frame(width: 40, height: 40)
                                 .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                             VStack(alignment: .leading, spacing: 2) {
@@ -2142,7 +1808,7 @@ private struct QuickLogSheet: View {
                                 .foregroundStyle(PPColor.muted)
                         }
                         .padding(14)
-                        .background(Color(red: 0.90, green: 0.88, blue: 0.96), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(PPColor.sage, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Fasting")
@@ -2153,8 +1819,8 @@ private struct QuickLogSheet: View {
                 }
                 .padding(18)
             }
-            .background(Color.white.ignoresSafeArea())
-            .navigationTitle("Add")
+            .background(PPColor.cream.ignoresSafeArea())
+            .navigationTitle("Quick actions")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2169,9 +1835,15 @@ private struct QuickLogSheet: View {
         case "food":
             dismiss()
             onFoodCamera()
+        case "manual-food":
+            dismiss()
+            onManualTap()
         case "water":
             dismiss()
             onWaterTap()
+        case "recent-meals":
+            dismiss()
+            onRecentMeals()
         case "workout":
             dismiss()
             onWorkout()

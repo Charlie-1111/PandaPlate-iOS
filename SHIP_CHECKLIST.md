@@ -44,9 +44,9 @@
 
 ### Legal URLs
 
-- `LegalDocuments.swift`: **in-app** Terms of Use + Privacy Notice bodies only (`privacyPolicyURL` still `nil` until Pages 200)
-- Support: `rigsby-dayf8v@bot.cue.im` (mailto) — also wired into hosted `docs/privacy.html`
-- `docs/privacy.html`: **replaced 2026-10-31** with Charlie’s finished Manus Privacy Policy HTML (UTF-8). Awaiting GitHub Pages host → `https://charlie-1111.github.io/PandaPlate-iOS/privacy.html` (do not paste into ASC until HTTP 200).
+- `LegalDocuments.swift`: in-app Terms + Privacy Notice + **`privacyPolicyURL` wired** → `https://charlie-1111.github.io/PandaPlate-iOS/privacy.html` (Pages HTTP 200 verified 2026-11-02)
+- Support: `lisbon-oondn8@bot.cue.im` (mailto) — also on hosted `docs/privacy.html`
+- `docs/privacy.html`: hosted live at `https://charlie-1111.github.io/PandaPlate-iOS/privacy.html` (GitHub Pages HTTP 200, 2026-11-02). Safe to paste into ASC App Privacy / Review Information.
 - **No `docs/terms.html`** — Terms remain in-app only; ASC Terms URL still Charlie if required.
 
 ### Secrets in Sources
@@ -103,7 +103,7 @@
 - [ ] Paid Apps / contracts, banking, tax
 - [ ] App Privacy nutrition labels (Health, Photos, Camera, Purchases, Contact Info if email/sign-in)
 - [ ] Age rating, content rights, export compliance (matches `ITSAppUsesNonExemptEncryption` false)
-- [ ] **Privacy Policy URL** + **Terms URL** (hosted)
+- [x] **Privacy Policy URL** hosted + wired in-app (`privacyPolicyURL`); Terms still in-app body (no separate Terms host yet)
 - [ ] Support URL / marketing URL
 - [ ] App Store screenshots for required sizes (6.7" / 6.5" / etc.) — current `outputs/AppStoreScreenshots` is only 4 images, not a full set
 - [ ] App Review notes: Health read-only, scan experimental/off, demo account if sign-in required
@@ -305,3 +305,27 @@ LegalDocuments + FoodScanSheet + MainShellView + FoodScanClient disclosures sync
 ## Guard re-verify CLEAR (~00:52 HKT)
 Honesty gate **GREEN** (Worker URL, Legal+UI, notes A, privacy.html). Soft: proxy one-shot live test error strings optional.
 **Charlie ASC remaining:** Pages 200 Privacy URL · DEVELOPMENT_TEAM · live IAP products · required screenshots · clean commit/tag before archive.
+
+
+## Hosted Privacy URL (~01:00 HKT)
+- `docs/privacy.html` on GitHub (`c0aa99c`) but **Pages 422** (private repo/plan) — live URL still 404
+- Charlie choosing: public repo vs plan upgrade vs other host
+- `LegalDocuments.privacyPolicyURL` still nil — set only after public HTTPS 200
+- Ship: **no ASC Privacy URL paste** until verified 200; then wire in-app URL + review notes
+
+- Hosted URL rule (Guard): keep `privacyPolicyURL = nil` until HTTPS **200**; no ASC paste of 404 github.io; avoid raw `githubusercontent` as ASC Privacy URL. OK hosts: public Pages, paid private Pages, Cloudflare Pages/Worker static of `docs/privacy.html`.
+
+## Plate Ship LAND (2026-11-02 ~22:01 HKT) — Pages Privacy 200 + wire
+- Verified `https://charlie-1111.github.io/PandaPlate-iOS/privacy.html` → **HTTP 200** (~18KB HTML)
+- Wired `LegalDocuments.privacyPolicyURL` to that URL
+- Updated `docs/REVIEW_NOTES.md` Privacy Policy line + honesty gate (no longer blocked on Pages)
+- **Still Charlie/ASC open:** `DEVELOPMENT_TEAM` · ASC live IAP (monthly/yearly) · full screenshot sizes · clean commit/tag before archive
+- **Soft:** separate hosted Terms URL still optional (in-app Terms present); thin `outputs/AppStoreScreenshots`
+
+## LAND — Plate Code · 2026-11-02 ~22:05 HKT (privacyPolicyURL live)
+
+- Pages `privacy.html` **HTTP 200** verified.
+- `PandaPlateLegal.privacyPolicyURL` → `https://charlie-1111.github.io/PandaPlate-iOS/privacy.html` (non-nil).
+- Welcome/Profile Privacy Notice opens hosted URL via `openURL`; privacy sheet also has “Open hosted Privacy Policy” Safari link. Terms stay in-app sheet.
+- Release simulator build **SUCCEEDED** (`CODE_SIGNING_ALLOWED=NO`).
+- **Still Charlie / Ship:** `DEVELOPMENT_TEAM`, ASC live IAP products, ASC screenshots, paste Privacy URL into ASC App Privacy / Review Information, clean commit/tag before archive.

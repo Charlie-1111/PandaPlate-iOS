@@ -32,13 +32,22 @@ final class PandaPlateSafetyTests: XCTestCase {
     func testWaterAndSessionDataAreBoundedAndResettable() {
         let store = AppStore()
         for _ in 0..<25 { store.addWater(250) }
-        XCTAssertEqual(store.waterML, 4_000)
+        XCTAssertEqual(store.waterML, 2_500)
+        XCTAssertEqual(WaterQuickLogModel.filledCount(for: store.waterServingsML), 10)
+        XCTAssertFalse(store.addWater(250), "The ten-cup logger must not silently exceed its visible slots.")
+
+        XCTAssertTrue(store.setWaterServing(500, at: 0))
+        XCTAssertEqual(store.waterML, 2_750)
+        XCTAssertTrue(store.undoLastWaterChange())
+        XCTAssertEqual(store.waterML, 2_500)
+        XCTAssertFalse(store.undoLastWaterChange(), "Only the most recent water change is undoable.")
 
         store.addMeal(name: "Lunch", calories: nil, imageData: nil)
         store.removeMeal(id: store.meals[0].id)
 
         store.resetDemoSession()
         XCTAssertEqual(store.waterML, 0)
+        XCTAssertEqual(WaterQuickLogModel.filledCount(for: store.waterServingsML), 0)
         XCTAssertTrue(store.meals.isEmpty)
     }
 

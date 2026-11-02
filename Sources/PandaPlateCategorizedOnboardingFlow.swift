@@ -2,8 +2,18 @@ import SwiftUI
 import UIKit
 import UserNotifications
 import StoreKit
-import AuthenticationServices
-import GoogleSignIn
+
+enum PandaPlateOnboardingRules {
+    static let allowedAgeYears = 13...100
+
+    static func isValidRequiredHourOnlyMealTime(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty
+            && MealTimeValidator.isValidOptional24HourTime(trimmed)
+            && trimmed.hasSuffix(":00")
+    }
+
+}
 
 /// A drop-in onboarding flow. It owns only temporary UI state; the host decides what to store.
 /// It does not edit AppStore, Home/navigation, health data, meals, or nutrition calculations.
@@ -16,7 +26,8 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     @State private var step: Step = .welcome
     @State private var draft = PandaPlateOnboardingDraft()
     @State private var skipRevealAnimation = false
-    @State private var teaserIsVisible = false
+    @State private var revealIsVisible = false
+    @State private var revealVideoFinished = false
     @State private var revealDragTranslation: CGFloat = 0
     @State private var revealCompleted = false
     @State private var showMidflowSoftPaywall = false
@@ -25,16 +36,13 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     @State private var planBuildPhaseIndex: Int = 0
     @State private var planBuildPausedForQuestion = false
     @State private var planInterruptIndex: Int = 0
-    @State private var showBMISourceSheet = false
     @State private var presentedLegalDocument: PandaPlateLegal.Document? = nil
     /// Welcome “I already have an account” shortcut — Back must return to welcome, not softPaywall.
     @State private var enteredAccountFromWelcomeShortcut = false
-    @State private var weightPreciseKg: Double?
     @State private var healthConnectBusy = false
     @State private var notificationRequestBusy = false
+    @State private var reminderAuthorizationStatus: UNAuthorizationStatus = .notDetermined
     @ObservedObject private var healthSync = HealthKitActivitySync.shared
-    @State private var appleSignInError: String?
-    @State private var googleSignInError: String?
     @FocusState private var focusedField: Field?
     @Environment(\.requestReview) private var requestReview
 
@@ -79,6 +87,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case weightProjection
         case planBuilding
         case finish
+        case planResult
         case rateApp
         case softPaywall
         case account
@@ -96,17 +105,17 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             case .weekendEating, .cravings, .activityLevel, .connectHealth, .activityCalorieMode, .sexGender, .age, .height, .currentWeight, .targetWeight,
                  .goalPace, .weightProjection:
                 "Personal context"
-            case .planBuilding, .finish: "Your setup"
+            case .planBuilding, .finish, .planResult: "Your setup"
             case .rateApp, .softPaywall, .account: "Almost ready"
             }
         }
 
         var title: String {
             switch self {
-            case .welcome: "Small bites. Big little wins."
+            case .welcome: "Small steps, your way."
             case .attribution: "How did you hear about us?"
             case .mainGoal: "What feels important right now?"
-            case .extraGoals: "Anything else you’d like to focus on?"
+            case .extraGoals: "Choose an extra focus (optional)."
             case .trackingExperience: "Have you used a food log before?"
             case .smallStepsIntro: "A few notes about small steps."
             case .fastingFamiliarity: "Have you heard of intermittent fasting?"
@@ -117,13 +126,13 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             case .userName: "What should Pip call you?"
             case .tone: "How should Pip encourage you?"
             case .toneInterstitial: "Small steps count. Keep logging!"
-            case .reminders: "Would a reminder feel useful?"
+            case .reminders: "Would a local reminder feel useful?"
             case .routineIntro: "Now let’s talk about your eating habits."
-            case .mealsPerDay: "How many meals fit your day?"
+            case .mealsPerDay: "Now let’s talk about your eating habits."
             case .mealWindow: "When do meals usually fit?"
             case .fastingSchedule: "Do you already follow a fasting schedule?"
             case .eatingLocations: "Where do you usually eat?"
-            case .dietPreference: "What kind of food preference would you like to note?"
+            case .dietPreference: "Any food preferences or restrictions?"
             case .foodRestrictions: "Are there foods you choose to avoid?"
             case .waterAdequacy: "How does your water routine feel?"
             case .habitChanges: "What small changes would you like to focus on?"
@@ -141,9 +150,10 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             case .weightProjection: "A simple estimate"
             case .planBuilding: "Personalizing your plan"
             case .finish: "Your setup"
+            case .planResult: "Your routine"
             case .rateApp: "Enjoying PandaPlate?"
             case .softPaywall: "A little more with Pip"
-            case .account: "Create your account"
+            case .account: "Connect with Apple"
             }
         }
 
@@ -168,7 +178,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             case .age: "calendar"
             case .height: "ruler"
             case .currentWeight, .targetWeight, .goalPace, .weightProjection: "scalemass.fill"
-            case .planBuilding, .finish: "checkmark.seal.fill"
+            case .planBuilding, .finish, .planResult: "checkmark.seal.fill"
             case .rateApp: "star.fill"
             case .softPaywall: "sparkles"
             case .account: "person.crop.circle.badge.checkmark"
@@ -177,9 +187,10 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         }
 
         var isOptional: Bool {
-            // Charlie: every real question is required. Skip stays only for Health / Rate / Soft paywall.
+            // Core profile measurements and the selected main focus remain required.
             switch self {
-            case .connectHealth, .rateApp, .softPaywall:
+            case .extraGoals, .pipName, .userName, .reminders, .mealWindow, .eatingLocations, .fastingSchedule, .dietPreference,
+                 .connectHealth, .rateApp, .softPaywall:
                 true
             default: false
             }
@@ -188,7 +199,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         var skipTitle: String? {
             guard isOptional else { return nil }
             switch self {
-            case .connectHealth: return "Skip for now"
+            case .extraGoals, .userName, .mealWindow, .eatingLocations, .fastingSchedule, .dietPreference, .connectHealth: return "Skip for now"
             case .rateApp: return "Maybe later"
             case .softPaywall: return "Continue with Free"
             default: return nil
@@ -198,66 +209,51 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         /// Grouped stages — new BitePal-parity beats share stages so the bar stays readable.
     }
 
+    private var activeSteps: [Step] {
+        [
+            .welcome, .mainGoal, .extraGoals, .trackingExperience,
+            .pipTeaser, .pipReveal, .pipName, .userName, .tone,
+            .mealsPerDay, .mealWindow, .eatingLocations, .fastingSchedule, .dietPreference, .reminders,
+            .age, .height, .currentWeight, .targetWeight, .finish, .planResult, .account
+        ]
+    }
+
+    private var progressSteps: [Step] {
+        [
+            .mainGoal, .extraGoals, .trackingExperience, .tone, .mealsPerDay, .mealWindow,
+            .eatingLocations, .fastingSchedule, .dietPreference, .reminders,
+            .age, .height, .currentWeight, .targetWeight, .finish
+        ]
+    }
+
+    private var activeStepNumber: Int {
+        (progressSteps.firstIndex(of: step) ?? 0) + 1
+    }
+
     private var isAccessibilityLayout: Bool { dynamicTypeSize.isAccessibilitySize }
     private var gridColumns: [GridItem] { [GridItem(.flexible())] }
 
     private var requiredMeasurementsAreValid: Bool {
-        guard let age = draft.ageYears, (13...100).contains(age),
+        guard let age = draft.ageYears, PandaPlateOnboardingRules.allowedAgeYears.contains(age),
               let height = draft.heightCentimeters, (100...230).contains(height),
               let currentWeight = draft.currentWeightKilograms, (25...300).contains(currentWeight),
-              let targetWeight = draft.targetWeightKilograms, (25...300).contains(targetWeight),
-              draft.goalPace != nil else { return false }
+              let targetWeight = draft.targetWeightKilograms, (25...300).contains(targetWeight) else { return false }
         return true
     }
 
     private var hasSignedInAccount: Bool {
-        draft.appleUserIdentifier != nil || draft.googleUserIdentifier != nil
+        draft.appleUserIdentifier != nil
     }
 
     private var requiredMeasurementMissing: Bool {
         switch step {
-        case .attribution: draft.attributionSource == nil
-        case .extraGoals: draft.additionalGoals.isEmpty
-        case .fastingFamiliarity: draft.fastingFamiliarity == nil
-        case .userName: draft.userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .reminders: draft.reminderPreference == nil
-        case .mealWindow:
-            draft.firstMealTime.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                || draft.lastMealTime.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .fastingSchedule: draft.fastingSchedulePreference == nil
-        case .eatingLocations: draft.eatingLocations.isEmpty
-        case .dietPreference: draft.dietPreference == nil
-        case .foodRestrictions: draft.foodRestrictions.isEmpty
-        case .waterAdequacy: draft.waterAdequacy == nil
-        case .habitChanges: draft.habitChanges.isEmpty
-        case .weekendEating: draft.weekendEating == nil
-        case .cravings: draft.cravingsFrequency == nil
-        case .activityLevel: draft.activityLevel == nil
-        case .sexGender: draft.sexGender == nil
-        case .age: draft.ageYears.map { (13...100).contains($0) } != true
+        case .age: draft.ageYears.map { PandaPlateOnboardingRules.allowedAgeYears.contains($0) } != true
         case .height: draft.heightCentimeters.map { (100...230).contains($0) } != true
         case .currentWeight: draft.currentWeightKilograms.map { (25...300).contains($0) } != true
         case .targetWeight: draft.targetWeightKilograms.map { (25...300).contains($0) } != true
-        case .goalPace: draft.goalPace == nil
         case .finish: !requiredMeasurementsAreValid
         case .account: !hasSignedInAccount
         default: false
-        }
-    }
-
-    /// Calm copy near Continue — questions feel long; clarify it’s worth it for Pip’s setup.
-    private var requiredAnswersWorthItLine: String {
-        "Every answer is required — it only takes a few minutes and makes Pip’s setup fit you."
-    }
-
-    private var showsRequiredWorthItHelper: Bool {
-        switch step {
-        case .welcome, .pipTeaser, .pipReveal, .pipName, .toneInterstitial, .routineIntro,
-             .smallStepsIntro, .fastingContext, .planBuilding, .finish, .rateApp, .softPaywall, .account,
-             .weightProjection, .connectHealth:
-            false
-        default:
-            true
         }
     }
 
@@ -284,6 +280,12 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 routineIntroScreen
             case .account:
                 accountScreen
+            case .planResult:
+                PandaPlatePlanResultView(
+                    plan: PandaPlatePlanBuilder.build(from: draft),
+                    onFinish: { moveToNextStep() },
+                    onUpgrade: { showMidflowSoftPaywall = true }
+                )
             default:
                 standardScreen
             }
@@ -294,9 +296,6 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         .sheet(isPresented: $showMidflowSoftPaywall) {
             PremiumPaywallView(isSoftPrompt: true)
         }
-        .sheet(isPresented: $showBMISourceSheet) {
-            bmiSourceSheet
-        }
         .sheet(item: $presentedLegalDocument) { doc in
             PandaPlateLegalDocumentSheet(document: doc)
         }
@@ -304,11 +303,19 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             if newStep == .planBuilding {
                 startPlanBuildingAnimation()
             }
-            if newStep == .weightProjection {
-                refreshWeightProjectionEstimate()
+            if newStep == .reminders {
+                Task { @MainActor in
+                    reminderAuthorizationStatus = await ReminderNotifications.authorizationStatus()
+                }
             }
             if newStep == .rateApp {
                 maybeRequestMidflowReview()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, step == .reminders else { return }
+            Task { @MainActor in
+                reminderAuthorizationStatus = await ReminderNotifications.authorizationStatus()
             }
         }
     }
@@ -383,6 +390,17 @@ struct PandaPlateCategorizedOnboardingFlow: View {
 
     private var promptHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("STEP \(activeStepNumber) OF \(progressSteps.count)")
+                    .font(.system(size: 11, weight: .bold, design: .rounded, relativeTo: .caption2))
+                    .tracking(0.7)
+                    .foregroundStyle(BitePalColor.titleGrey)
+                Spacer(minLength: 0)
+            }
+            ProgressView(value: Double(activeStepNumber), total: Double(max(progressSteps.count, 1)))
+                .tint(PPColor.forest)
+                .accessibilityLabel("Step \(activeStepNumber) of \(progressSteps.count)")
+
             Text(step.title)
                 .font(.system(size: 26, weight: .bold, design: .rounded, relativeTo: .title))
                 .foregroundStyle(PPColor.ink)
@@ -397,24 +415,24 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     private var stepSubtitle: String {
         switch step {
         case .mainGoal: "Choose one. There’s no perfect answer, and it can change."
-        case .extraGoals: "Pick at least one. These notes don’t change calculations."
+        case .extraGoals: "Optional. Choose any extra focus or habits that feel useful; you can leave this blank."
         case .trackingExperience: "This just helps set the tone. Nothing is judged or scored."
         case .smallStepsIntro: "A neutral overview of what this setup asks. No outcome claims or targets."
         case .fastingFamiliarity: "Just a familiarity question. No schedule or recommendation follows."
         case .fastingContext: "PandaPlate won’t set a fasting target or give fasting advice."
-        case .pipTeaser: "Gamification makes habits stick for up 5x longer."
+        case .pipTeaser: "Open to meet Pip. Small, flexible steps are yours to keep or change."
         case .pipReveal: "Swipe up to meet Pip. Continue when you’re ready."
         case .pipName: "Pick a name, or keep Pip."
-        case .userName: "Required. It’s only for Pip’s greeting during this session."
+        case .userName: "Optional. Pip uses this name only for greetings on this device."
         case .tone: "Pick the style that feels comfortable to hear."
         case .toneInterstitial: "Pip can be kind and encouraging without keeping score."
-        case .reminders: "Pick one. Next we’ll ask iOS for notification permission if you want reminders."
+        case .reminders: "Choose a local reminder time, then tap Allow reminders if you want iOS notifications. Or choose Not now."
         case .routineIntro: "A few short questions help describe your usual rhythm."
-        case .mealsPerDay: "A reference point, not a target or prescription."
-        case .mealWindow: "Choose first and last meal times (24-hour). Both are required."
-        case .fastingSchedule: "Note your current routine. No schedule or recommendation is created."
+        case .mealsPerDay: "Choose the number that fits most days. It’s a reference, not a target."
+        case .mealWindow: "Optional. Exact hours are used only if you choose meal-time reminders."
+        case .fastingSchedule: "Optional context only. No fasting window or recommendation is created."
         case .eatingLocations: "Choose any that fit. Your routine can vary day to day."
-        case .dietPreference: "Pick a preference; no meal plan is calculated."
+        case .dietPreference: "Optional food preferences for reference. This version makes no meal or recipe suggestions."
         case .foodRestrictions: "Pick any that apply (or No restrictions). Not an allergy check or safety guarantee."
         case .waterAdequacy: "Required. There’s no right answer and no hydration target is calculated."
         case .habitChanges: "Choose at least one. These answers don’t create targets."
@@ -425,17 +443,18 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .activityCalorieMode: "Preference only — stored for later personalization, not a live calorie budget."
         case .attribution: "Pick one. This stays in the setup session only."
         case .sexGender: "Choose one before body metrics. Held in this setup session only."
-        case .age: "Required · years · held in this setup session only."
-        case .height: "Required · centimetres · no BMI or daily calorie target is shown."
-        case .currentWeight: "Required · kilograms · no BMI or daily calorie target is shown."
-        case .targetWeight: "Required · kg or lbs (wheels rematch the unit) · pace and a simple date estimate come next."
-        case .goalPace: "Choose a pace. This is a preference, not a prescription."
-        case .weightProjection: "A linear estimate only — not medical advice. No BMI or calorie targets."
-        case .planBuilding: "Gathering your answers. No fake macros or calorie plan."
-        case .finish: "Review your answers. No nutrition target, BMI, or macros are calculated."
+        case .age: "Required for the age-safety note. Kept for this setup session only."
+        case .height: "Required profile context. Kept for this setup session; it does not change the routine."
+        case .currentWeight: "Required profile context. Kept for this setup session; it does not change the routine."
+        case .targetWeight: "Required profile context. Kept for this setup session; no weight goal or date is calculated."
+        case .goalPace: "This step is not part of setup."
+        case .weightProjection: "No weight-date projection is calculated."
+        case .planBuilding: "Your routine is assembled on this device from the choices you made."
+        case .finish: "Review your answers. No BMI, calorie targets, weight direction, or date projections are calculated."
+        case .planResult: "A flexible routine checklist, built offline from your choices and held for this session."
         case .rateApp: "Optional. A soft thank-you — Apple may show a rating prompt once."
         case .softPaywall: "Optional Premium for extra Pip looks, show-up history, and session export. Free remains usable."
-        case .account: "Sign in with Apple or Google to finish setup. An account is required."
+        case .account: "Sign in with Apple to continue. Meal logs stay in this app session and don’t sync."
         case .welcome: "Start with one small step that feels right for you."
         }
     }
@@ -526,10 +545,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 if let goal = WellnessGoal(rawValue: value) { draft.goal = goal }
             }
         case .extraGoals:
-            multiChoices([
-                "A kinder food relationship", "Everyday wellbeing", "More daily energy", "More variety",
-                "Feel more like myself", "Support movement", "Less stress", "Learn about nutrition"
-            ], selected: $draft.additionalGoals)
+            goalsAndHabitsContent
         case .trackingExperience:
             singleChoices(["This is new to me", "I’ve logged before", "I log regularly"], selected: draft.loggingFamiliarity) {
                 draft.loggingFamiliarity = $0
@@ -561,9 +577,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 ("You set the pace", "There’s no streak or perfect-day test.", "leaf.fill")
             ])
         case .reminders:
-            singleChoices(["In the morning", "Before each meal", "When Pip is hungry", "Set up later"], selected: draft.reminderPreference ?? "") {
-                draft.reminderPreference = $0
-            }
+            reminderChoiceContent
         case .routineIntro:
             reassuranceCards([
                 ("Usual is enough", "Choose what fits most days.", "calendar"),
@@ -582,9 +596,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .eatingLocations:
             locationChoices
         case .dietPreference:
-            singleChoices(["Balanced", "Vegetarian", "Vegan", "Paleo", "Ketogenic", "High protein", "Lower carb", "Another preference"], selected: draft.dietPreference ?? "") {
-                draft.dietPreference = $0
-            }
+            foodPreferencesContent
         case .foodRestrictions:
             multiChoices([
                 "All meat", "Animal products", "Citrus fruits", "Dairy", "Eggs", "Fish", "Gluten", "Nuts",
@@ -624,11 +636,11 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 draft.sexGender = $0
             }
         case .age:
-            requiredMeasurementPicker(title: "Your age", unit: "years", values: Array(13...100), selection: $draft.ageYears)
+            requiredMeasurementPicker(title: "Your age", unit: "years", values: Array(PandaPlateOnboardingRules.allowedAgeYears), selection: $draft.ageYears)
         case .height:
             heightMeasurementContent
         case .currentWeight:
-            currentWeightWithBMIContent
+            currentWeightContent
         case .targetWeight:
             targetWeightContent
         case .goalPace:
@@ -636,11 +648,13 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 draft.goalPace = $0
             }
         case .weightProjection:
-            weightProjectionContent
+            EmptyView()
         case .planBuilding:
             planBuildingContent
         case .finish:
             setupReview
+        case .planResult:
+            EmptyView()
         case .rateApp:
             rateAppContent
         case .softPaywall:
@@ -650,6 +664,101 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .welcome, .pipTeaser, .pipReveal:
             EmptyView()
         }
+    }
+
+    private var goalsAndHabitsContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Extra focus (optional)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                multiChoices([
+                    "A kinder food relationship", "Everyday wellbeing", "More daily energy", "More variety",
+                    "Feel more like myself", "Support movement", "Less stress", "Learn about nutrition"
+                ], selected: $draft.additionalGoals)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Small habits (optional)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                multiChoices([
+                    "Reduce added sugar", "Eat fewer highly processed snacks", "Add more greens and vegetables",
+                    "Cook at home more often", "Reduce salt", "No change for now"
+                ], selected: $draft.habitChanges, onSelection: toggleHabitChange)
+            }
+        }
+    }
+
+    private var foodPreferencesContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Diet preference (optional)")
+                .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                .foregroundStyle(PPColor.ink)
+            singleChoices(
+                ["No specific preference", "Vegetarian", "Vegan", "Paleo", "Ketogenic", "High protein", "Lower carb", "Another preference"],
+                selected: draft.dietPreference ?? ""
+            ) { draft.dietPreference = $0 }
+
+            Text("Foods you choose to avoid (optional, choose any)")
+                .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                .foregroundStyle(PPColor.ink)
+                .padding(.top, 4)
+            multiChoices([
+                "All meat", "Animal products", "Citrus fruits", "Dairy", "Eggs", "Fish", "Gluten", "Nuts",
+                "Red meat", "Seafood", "Seeds", "Shellfish", "Soy", "No restrictions"
+            ], selected: $draft.foodRestrictions, onSelection: toggleRestriction)
+            Text("For reference only. This version makes no food or recipe suggestions, and this isn’t an allergy-safety check.")
+                .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                .foregroundStyle(PPColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var reminderChoiceContent: some View {
+        VStack(spacing: 10) {
+            choiceCard(
+                "In the morning",
+                detail: "One gentle local reminder at 8:00 AM.",
+                symbol: "sunrise.fill",
+                selected: draft.reminderPreference == "In the morning",
+                mode: "single"
+            ) { draft.reminderPreference = "In the morning" }
+            .accessibilityIdentifier("onboarding-reminder-morning")
+
+            choiceCard(
+                "Before each meal",
+                detail: mealReminderChoiceDetail,
+                symbol: "fork.knife",
+                selected: draft.reminderPreference == "Before each meal",
+                mode: "single"
+            ) { draft.reminderPreference = "Before each meal" }
+            .accessibilityIdentifier("onboarding-reminder-meals")
+
+            Text("Reminders are local notifications. iOS will ask only after you tap Allow reminders; you can turn them off later in Settings.")
+                .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                .foregroundStyle(PPColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if reminderAuthorizationStatus == .denied {
+                Text("Notifications are off in iOS Settings. Open Settings to allow them, or choose Not now.")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Open Settings") { ReminderNotifications.openSystemSettings() }
+                    .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.forestDeep)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .accessibilityIdentifier("onboarding-reminders-open-settings")
+            }
+        }
+    }
+
+    private var mealReminderChoiceDetail: String {
+        let firstMeal = PandaPlateOnboardingRules.isValidRequiredHourOnlyMealTime(draft.firstMealTime)
+            ? displayMealTime(draft.firstMealTime)
+            : "12 PM"
+        if firstMeal == "6 PM" { return "One local reminder each day at 6:00 PM." }
+        return "Two local reminders each day: \(firstMeal), then 6:00 PM."
     }
 
     private var toneChoices: some View {
@@ -693,7 +802,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         VStack(alignment: .leading, spacing: 12) {
             PandaPlateSnapTimeSelector(title: "First meal", time: $draft.firstMealTime)
             PandaPlateSnapTimeSelector(title: "Last meal", time: $draft.lastMealTime)
-            Text("Choose first and last meal times to continue.")
+            Text("Tap or scroll to a 1–12 hour, then select AM or PM.")
                 .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                 .foregroundStyle(PPColor.muted)
         }
@@ -855,14 +964,14 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     .foregroundStyle(PPColor.coralInk)
             }
             PPCard {
-                Text("Stored in centimetres for this session. No BMI until weight. No daily calorie target.")
+                Text("This value stays in this setup session and does not change the routine.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
             }
         }
     }
 
-    @ViewBuilder private var currentWeightWithBMIContent: some View {
+    @ViewBuilder private var currentWeightContent: some View {
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 10) {
                 Image("PP_PipChatAvatar")
@@ -880,7 +989,12 @@ struct PandaPlateCategorizedOnboardingFlow: View {
 
             PandaPlateDecimalWeightSelector(title: "Current weight", selectionKg: $draft.currentWeightKilograms, preciseKgBinding: $draft.currentWeightKilogramsPrecise)
 
-            bmiCard
+            PPCard {
+                Text("This value stays in this setup session and does not change the routine.")
+                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             if draft.currentWeightKilograms == nil {
                 Text("Select a weight to continue.")
@@ -898,122 +1012,17 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             if draft.targetWeightKilograms == nil {
                 Text("Select a weight to continue.")
                     .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.coralInk)
+                .foregroundStyle(PPColor.coralInk)
             }
 
             PPCard {
-                Text("This answer stays in this setup session. No BMI or daily calorie target is shown.")
+                Text("This value stays in this setup session and does not change the routine.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
-                    .fixedSize(horizontal: false, vertical: true)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
-
-    @ViewBuilder private var bmiCard: some View {
-        let height = draft.heightCentimeters
-        let weight = draft.currentWeightKilogramsPrecise ?? draft.currentWeightKilograms.map(Double.init)
-        if let height, let weight, let result = BMICategory.compute(heightCm: height, weightKg: weight) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Your BMI:")
-                        .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .body))
-                        .foregroundStyle(PPColor.ink)
-                    Text(String(format: "%.1f", result.value))
-                        .font(.system(size: 28, weight: .black, design: .rounded, relativeTo: .title))
-                        .foregroundStyle(result.category.badgeFill)
-                    Spacer()
-                    Text(result.category.badgeTitle)
-                        .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(result.category.badgeText)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(result.category.badgeFill, in: Capsule())
-                }
-                Text(result.category.calmCopy)
-                    .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let age = draft.ageYears, (13...17).contains(age) {
-                    Text("These labels use WHO adult categories; they aren’t tailored for teens — check with a clinician if you have questions.")
-                        .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel("Teen note: WHO adult BMI categories; not tailored for teens")
-                }
-                Button("Based on what you shared") { showBMISourceSheet = true }
-                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(BitePalColor.selectGreen)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(result.category.softCardTint, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(result.category.badgeFill.opacity(0.35), lineWidth: 1)
-            )
-        } else if draft.currentWeightKilograms != nil, draft.heightCentimeters == nil {
-            Text("Add height first to see an informational BMI.")
-                .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
-                .foregroundStyle(PPColor.muted)
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(BitePalColor.whiteCard, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-    }
-
-    private var bmiSourceSheet: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("BMI here is informational only — computed from the height and weight you entered. It isn’t a diagnosis, and it never unlocks or locks Premium.")
-                        .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
-                        .foregroundStyle(PPColor.ink)
-                    if let age = draft.ageYears, (13...17).contains(age) {
-                        Text("You’re under 18: the bands below are WHO adult categories and aren’t tailored for teens. Talk with a clinician if you have questions — BMI here stays informational only.")
-                            .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
-                            .foregroundStyle(PPColor.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Text("Adult categories commonly cited by WHO / CDC-style charts:")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.muted)
-                    ForEach([
-                        (BMICategory.underweight.badgeTitle, "< 18.5", BMICategory.underweight),
-                        (BMICategory.healthy.badgeTitle, "18.5 – 24.9", BMICategory.healthy),
-                        (BMICategory.overweight.badgeTitle, "25.0 – 29.9", BMICategory.overweight),
-                        (BMICategory.obese.badgeTitle, "≥ 30.0", BMICategory.obese),
-                    ], id: \.0) { row in
-                        HStack(spacing: 10) {
-                            Capsule()
-                                .fill(row.2.badgeFill)
-                                .frame(width: 10, height: 10)
-                                .accessibilityHidden(true)
-                            Text(row.0).font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
-                                .foregroundStyle(PPColor.ink)
-                            Spacer()
-                            Text(row.1).font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline)).foregroundStyle(PPColor.muted)
-                        }
-                        .padding(.vertical, 6)
-                    }
-                    Text("PandaPlate won’t invent height or weight, and won’t use BMI for guilt or paywalls.")
-                        .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.muted)
-                }
-                .padding(20)
-            }
-            .background(BitePalColor.questionBG.ignoresSafeArea())
-            .navigationTitle("Based on what you shared")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { showBMISourceSheet = false }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
 
     private func requiredMeasurementPicker(
         title: String,
@@ -1031,7 +1040,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     .accessibilityAddTraits(.isStaticText)
             }
             PPCard {
-                Text("This answer stays in this setup session. No BMI or daily calorie target is shown.")
+                Text("This value stays in this setup session and does not change the routine.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1042,39 +1051,30 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     private var setupReview: some View {
         VStack(alignment: .leading, spacing: 11) {
             recapCard("Main focus", value: draft.goal.rawValue, symbol: "sparkles")
+            if !draft.additionalGoals.isEmpty {
+                recapCard("Extra focus", value: draft.additionalGoals.sorted().joined(separator: ", "), symbol: "leaf.fill")
+            }
+            if !draft.habitChanges.isEmpty {
+                recapCard("Habit notes", value: draft.habitChanges.sorted().joined(separator: ", "), symbol: "leaf.fill")
+            }
             recapCard("Pip’s style", value: draft.pipStyle.rawValue, symbol: "heart.fill")
             recapCard("Pip calls you", value: draft.sanitizedUserName, symbol: "person.fill")
             recapCard("Companion name", value: draft.sanitizedCompanionName, symbol: "pawprint.fill")
             recapCard("Food-log experience", value: draft.loggingFamiliarity, symbol: "square.and.pencil")
-            recapCard("Fasting familiarity", value: draft.fastingFamiliarity ?? "Not set", symbol: "moon.stars.fill")
             recapCard("Meals that fit your day", value: "\(draft.mealsPerDay)", symbol: "fork.knife")
-            recapCard("First meal", value: draft.firstMealTime.isEmpty ? "Not set" : draft.firstMealTime, symbol: "sunrise.fill")
-            recapCard("Last meal", value: draft.lastMealTime.isEmpty ? "Not set" : draft.lastMealTime, symbol: "sunset.fill")
-            recapCard("Fasting schedule", value: draft.fastingSchedulePreference ?? "Not set", symbol: "moon.stars.fill")
-            recapCard("Usual places", value: draft.eatingLocations.isEmpty ? "Not set" : draft.eatingLocations.sorted().joined(separator: ", "), symbol: "house.fill")
-            recapCard("Food preference", value: draft.dietPreference ?? "Not set", symbol: "carrot.fill")
-            recapCard("Foods to avoid", value: draft.foodRestrictions.isEmpty ? "Not set" : draft.foodRestrictions.sorted().joined(separator: ", "), symbol: "fork.knife")
-            recapCard("Water routine", value: draft.waterAdequacy ?? "Not set", symbol: "drop.fill")
-            recapCard("Changes you chose", value: draft.habitChanges.isEmpty ? "Not set" : draft.habitChanges.sorted().joined(separator: ", "), symbol: "leaf.fill")
-            recapCard("Weekend routine", value: draft.weekendEating ?? "Not set", symbol: "calendar")
-            recapCard("Cravings", value: draft.cravingsFrequency ?? "Not set", symbol: "heart.text.square.fill")
-            recapCard("Heard about us", value: draft.attributionSource ?? "Not set", symbol: "megaphone.fill")
-            recapCard("Usual movement", value: draft.activityLevel ?? "Not set", symbol: "figure.walk")
-            recapCard("Apple Health", value: draft.healthKitConnected ? "Connected" : (draft.healthKitSkipped ? "Skipped" : "Not connected"), symbol: "heart.text.square.fill")
-            recapCard("Activity calories", value: draft.activityCalorieMode.title, symbol: "flame.fill")
-            recapCard("Sex / gender", value: draft.sexGender ?? "Not set", symbol: "person.fill")
+            if !draft.firstMealTime.isEmpty { recapCard("First meal", value: displayMealTime(draft.firstMealTime), symbol: "sunrise.fill") }
+            if !draft.lastMealTime.isEmpty { recapCard("Last meal", value: displayMealTime(draft.lastMealTime), symbol: "sunset.fill") }
+            if let fasting = draft.fastingSchedulePreference { recapCard("Fasting schedule", value: fasting, symbol: "moon.stars.fill") }
+            if !draft.eatingLocations.isEmpty { recapCard("Usual places", value: draft.eatingLocations.sorted().joined(separator: ", "), symbol: "house.fill") }
+            if let diet = draft.dietPreference { recapCard("Food preference", value: diet, symbol: "carrot.fill") }
+            if !draft.foodRestrictions.isEmpty { recapCard("Foods to avoid", value: draft.foodRestrictions.sorted().joined(separator: ", "), symbol: "fork.knife") }
             recapCard("Age", value: draft.ageYears.map { "\($0) years" } ?? "Not set", symbol: "calendar")
             recapCard("Height", value: draft.heightCentimeters.map { "\($0) cm" } ?? "Not set", symbol: "ruler")
             recapCard("Current weight", value: draft.currentWeightKilograms.map { "\($0) kg" } ?? "Not set", symbol: "scalemass.fill")
             recapCard("Target weight", value: draft.targetWeightKilograms.map { "\($0) kg" } ?? "Not set", symbol: "scalemass.fill")
-            recapCard("Goal pace", value: draft.goalPace ?? "Not set", symbol: "tortoise.fill")
-            recapCard("Date estimate", value: projectionRecapValue, symbol: "calendar.badge.clock")
             recapCard("Reminder preference", value: reminderRecapValue, symbol: "bell.fill")
-            if !draft.additionalGoals.isEmpty {
-                recapCard("Extra focus", value: draft.additionalGoals.sorted().joined(separator: ", "), symbol: "leaf.fill")
-            }
             PPCard {
-                Text("This is a preference review — not a nutrition plan, BMI, or macros. If you allowed notifications, gentle local reminders follow your preference on this device (best-effort — not a delivery guarantee).")
+                Text("This is a review of your choices. No BMI, calorie target, weight direction, or date projection is calculated. Local reminders depend on iOS permission and may be turned off in Settings.")
                     .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -1082,49 +1082,73 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         }
     }
 
+    private func displayMealTime(_ value: String) -> String {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !normalized.isEmpty else { return "Not set" }
+        if normalized == "AM" || normalized == "PM" { return normalized }
+        guard normalized.count == 5,
+              MealTimeValidator.isValidOptional24HourTime(normalized),
+              let hour24 = Int(normalized.prefix(2)) else { return value }
+        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
+        let period = hour24 < 12 ? "AM" : "PM"
+        return "\(hour12) \(period)"
+    }
+
     private var footer: some View {
-        // BitePal: black CTA on same light-grey as the question screen — no cream footer strip.
         VStack(spacing: 6) {
-            if showsRequiredWorthItHelper {
-                Text(requiredAnswersWorthItLine)
-                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(BitePalColor.titleGrey)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 8)
-                    .accessibilityLabel(requiredAnswersWorthItLine)
-            }
-            Button {
-                focusedField = nil
-                continueFlow()
-            } label: {
-                HStack(spacing: 8) {
-                    Text(primaryTitle)
+            if step == .reminders {
+                Button(action: allowRemindersAndContinue) {
+                    Text(notificationRequestBusy ? "Checking iOS…" : "Allow reminders")
                         .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                    if primaryTitle == "Next" || primaryTitle == "Continue" {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .bold))
-                    }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .background(BitePalColor.ctaBlack, in: Capsule())
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .background(BitePalColor.ctaBlack, in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(requiredMeasurementMissing || notificationRequestBusy)
-            .opacity((requiredMeasurementMissing || notificationRequestBusy) ? 0.45 : 1)
-            .accessibilityLabel(primaryTitle)
-            .accessibilityHint(
-                step == .account && requiredMeasurementMissing
-                ? "Sign in with Apple or Google to finish setup."
-                : (requiredMeasurementMissing ? "Choose an answer to continue — every question is required." : "")
-            )
-            if let skipTitle = step.skipTitle {
-                Button(skipTitle, action: skipCurrentStep)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
+                .buttonStyle(.plain)
+                .disabled(notificationRequestBusy || draft.reminderPreference == nil || reminderAuthorizationStatus == .denied)
+                .opacity((notificationRequestBusy || draft.reminderPreference == nil || reminderAuthorizationStatus == .denied) ? 0.45 : 1)
+                .accessibilityIdentifier("onboarding-reminders-allow")
+                .accessibilityHint("Requests iOS notification permission and schedules the selected local reminder if allowed.")
+
+                Button("Not now") { continueWithoutReminders() }
+                    .font(.system(size: 14, weight: .semibold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(PPColor.muted)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
+                    .accessibilityIdentifier("onboarding-reminders-not-now")
+            } else {
+                Button {
+                    focusedField = nil
+                    continueFlow()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(primaryTitle)
+                            .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
+                        if primaryTitle == "Next" || primaryTitle == "Continue" {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 13, weight: .bold))
+                        }
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .background(BitePalColor.ctaBlack, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .disabled(requiredMeasurementMissing)
+                .opacity(requiredMeasurementMissing ? 0.45 : 1)
+                .accessibilityLabel(primaryTitle)
+                .accessibilityHint(
+                    step == .account && requiredMeasurementMissing
+                    ? "Sign in with Apple to finish setup."
+                    : (requiredMeasurementMissing ? "Choose a valid answer to continue." : "")
+                )
+                if let skipTitle = step.skipTitle {
+                    Button(skipTitle, action: skipCurrentStep)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
+                        .foregroundStyle(PPColor.muted)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
             }
         }
         .frame(maxWidth: 500)
@@ -1150,60 +1174,50 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     }
 
     @ViewBuilder private var teaserScreen: some View {
-        // Reveal-world backdrop = intro-video mint (#B8E3CA).
-        return ZStack {
-            revealWorldBackground
+        ZStack {
+            BitePalColor.introVideoGreen.ignoresSafeArea()
+            RadialGradient(colors: [Color.white.opacity(0.58), .clear], center: .center, startRadius: 20, endRadius: 360)
+                .ignoresSafeArea()
+                .accessibilityHidden(true)
+
             VStack(spacing: 0) {
-            mintBackBar
-            Spacer(minLength: 40)
-            VStack(spacing: 6) {
-                Text("Let’s meet your")
-                    .font(.system(size: 34, weight: .bold, design: .rounded, relativeTo: .largeTitle))
+                mintBackBar
+                Spacer(minLength: 30)
+                Image(systemName: "sparkles")
+                    .font(.system(size: 58, weight: .light))
+                    .foregroundStyle(PPColor.coralInk)
+                    .frame(width: 112, height: 112)
+                    .background(Color.white.opacity(0.82), in: Circle())
+                    .accessibilityHidden(true)
+                Text("A little world is waiting")
+                    .font(.system(size: 31, weight: .bold, design: .rounded, relativeTo: .largeTitle))
                     .foregroundStyle(PPColor.ink)
-                Text("virtual pet")
-                    .font(.system(size: 34, weight: .bold, design: .rounded, relativeTo: .largeTitle))
-                    .foregroundStyle(BitePalColor.titleGrey)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 22)
+                Text("Open to meet your new companion.")
+                    .font(.system(size: 16, weight: .medium, design: .rounded, relativeTo: .body))
+                    .foregroundStyle(PPColor.ink.opacity(0.76))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .padding(.top, 8)
+                Spacer(minLength: 28)
+                Button {
+                    focusedField = nil
+                    revealVideoFinished = reduceMotion || Bundle.main.url(forResource: "red_panda_welcome_animation", withExtension: "mp4") == nil
+                    step = .pipReveal
+                } label: {
+                    Text("Open")
+                        .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .background(BitePalColor.ctaBlack, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 22)
+                .accessibilityLabel("Open")
             }
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 28)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Let’s meet your virtual pet")
-
-            Spacer(minLength: 24)
-
-            teaserTipCard
-                .padding(.horizontal, 28)
-
-            Button {
-                focusedField = nil
-                resetRevealInteraction()
-                step = .pipReveal
-            } label: {
-                Text("Continue")
-                    .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                    .background(BitePalColor.ctaBlack, in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 22)
-            .padding(.top, 16)
-            .padding(.bottom, 22)
-            .accessibilityLabel("Continue")
-        }
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            // BitePal advances from teaser with a continue/tap.
-            focusedField = nil
-            resetRevealInteraction()
-            step = .pipReveal
-        }
-        .onAppear { teaserIsVisible = true }
-        .onDisappear {
-            teaserIsVisible = false
-            focusedField = nil
         }
     }
 
@@ -1258,105 +1272,93 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             .accessibilityHidden(true)
     }
 
-    /// Full-screen mint reveal — swipe-up GIF (no mp4).
+    /// Full-screen, muted Pip welcome video starts only after the user taps Open.
     private var revealScreen: some View {
-        VStack(spacing: 0) {
-            mintBackBar
-            Text(revealCompleted || skipRevealAnimation
-                 ? "This \(draft.companionName.isEmpty ? "Pip" : draft.companionName) is now your virtual pet"
-                 : step.title)
-                .font(.system(size: 28, weight: .bold, design: .rounded, relativeTo: .title))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(PPColor.ink)
-                .padding(.horizontal, 28)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-                .fixedSize(horizontal: false, vertical: true)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: revealCompleted)
+        ZStack {
+            BitePalColor.introVideoGreen.ignoresSafeArea()
 
-            ZStack(alignment: .bottom) {
-                Color.clear
-                revealBackdrop
-                    .offset(y: revealPetVisualOffset)
-                    .gesture(revealSwipeGesture)
-                    .animation(reduceMotion ? nil : .interactiveSpring(response: 0.32, dampingFraction: 0.86), value: revealDragTranslation)
-                    .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.84), value: revealCompleted)
+            if !reduceMotion, !revealVideoFinished,
+               let url = Bundle.main.url(forResource: "red_panda_welcome_animation", withExtension: "mp4") {
+                MutedOneShotVideo(
+                    url: url,
+                    shouldPlay: revealIsVisible && scenePhase == .active,
+                    videoGravity: .resizeAspectFill
+                ) {
+                    withAnimation(.easeOut(duration: 0.3)) { revealVideoFinished = true }
+                }
+                .ignoresSafeArea()
+                .accessibilityLabel("Pip’s full-screen welcome video")
+            } else {
+                Image("PP_PipBase")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: 330, maxHeight: 520)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(BitePalColor.introVideoGreen)
+                    .ignoresSafeArea()
+                    .accessibilityLabel("Pip waving in the forest garden")
+            }
 
-                if !revealCompleted {
-                    VStack(spacing: 10) {
-                        if reduceMotion || skipRevealAnimation {
-                            Button {
-                                completePipReveal()
-                            } label: {
-                                Text("Meet Pip")
-                                    .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity, minHeight: 52)
-                                    .background(BitePalColor.ctaBlack, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 22)
-                        } else {
-                            Image(systemName: "chevron.up")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundStyle(PPColor.ink.opacity(0.45))
-                                .accessibilityHidden(true)
-                            Text("Swipe up")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                                .foregroundStyle(PPColor.ink.opacity(0.55))
-                        }
+            LinearGradient(
+                stops: [
+                    .init(color: PPColor.ink.opacity(0.24), location: 0),
+                    .init(color: .clear, location: 0.25),
+                    .init(color: .clear, location: 0.58),
+                    .init(color: PPColor.ink.opacity(0.62), location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+
+            VStack(spacing: 0) {
+                mintBackBar
+                Text(revealVideoFinished ? "Meet your new companion" : "A little hello from Pip")
+                    .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(PPColor.ink.opacity(0.48), in: Capsule())
+                    .padding(.top, 14)
+                Spacer(minLength: 20)
+                VStack(spacing: 7) {
+                    Button {
+                        guard revealVideoFinished else { return }
+                        focusedField = nil
+                        revealIsVisible = false
+                        step = .pipName
+                    } label: {
+                        Text("Continue")
+                            .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .background(revealVideoFinished ? BitePalColor.ctaBlack : PPColor.muted, in: Capsule())
                     }
-                    .padding(.bottom, 12)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
+                    .buttonStyle(.plain)
+                    .disabled(!revealVideoFinished)
+                    .accessibilityHint(revealVideoFinished ? "Continue to name your companion" : "Video is playing; Continue will be available when it ends")
 
-            VStack(spacing: 6) {
-                Button {
-                    focusedField = nil
-                    step = .pipName
-                } label: {
-                    Text("Continue")
-                        .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 56)
-                        .background(BitePalColor.ctaBlack, in: Capsule())
+                    Button("Skip video") {
+                        focusedField = nil
+                        revealIsVisible = false
+                        skipRevealAnimation = true
+                        step = .pipName
+                    }
+                    .font(.system(size: 14, weight: .semibold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .disabled(!revealCompleted && !skipRevealAnimation)
-                .opacity((revealCompleted || skipRevealAnimation) ? 1 : 0.45)
-                .accessibilityHint(revealCompleted || skipRevealAnimation ? "" : "Swipe up to meet Pip first")
-
-                Button("Skip") {
-                    focusedField = nil
-                    skipRevealAnimation = true
-                    revealCompleted = true
-                    step = .pipName
-                }
-                .font(.system(size: 15, weight: .semibold, design: .rounded, relativeTo: .subheadline))
-                .foregroundStyle(PPColor.coralInk)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(Rectangle())
-                .accessibilityHint("Skip the reveal and continue to naming with a static Pip")
+                .padding(.horizontal, 22)
+                .padding(.bottom, 18)
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 10)
-            .padding(.bottom, 12)
-            .frame(maxWidth: .infinity)
-            .background(Color.white.opacity(0.72))
         }
-        .background { revealWorldBackground }
         .onAppear {
-            teaserIsVisible = true
-            if skipRevealAnimation {
-                revealCompleted = true
-                revealDragTranslation = revealSwipeTravel
-            }
+            revealIsVisible = true
+            revealVideoFinished = reduceMotion || Bundle.main.url(forResource: "red_panda_welcome_animation", withExtension: "mp4") == nil
         }
-        .onDisappear { teaserIsVisible = false }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Swipe up to see who’s there")
+        .onDisappear { revealIsVisible = false }
     }
 
     private var revealSwipeTravel: CGFloat { 220 }
@@ -1464,7 +1466,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 Spacer(minLength: 36)
 
                 VStack(spacing: 14) {
-                    Text("Name your companion")
+                    Text("Name your companion (optional)")
                         .font(.system(size: 15, weight: .semibold, design: .rounded, relativeTo: .subheadline))
                         .foregroundStyle(PPColor.muted)
                         .frame(maxWidth: .infinity)
@@ -1535,6 +1537,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 .foregroundStyle(PPColor.coralInk)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .padding(.bottom, 12)
+                .accessibilityIdentifier("onboarding-pip-name-skip")
             }
         }
         .clipped()
@@ -1996,68 +1999,6 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         toggle(value, in: $draft.habitChanges)
     }
 
-    private var projectionRecapValue: String {
-        if draft.estimatedReachSkippedUnder18 {
-            return "Skipped under 18"
-        }
-        if let date = draft.estimatedReachDate {
-            return Self.projectionDateFormatter.string(from: date) + " · estimate"
-        }
-        return "Not set"
-    }
-
-    private static let projectionDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_HK")
-        f.timeZone = TimeZone(identifier: "Asia/Hong_Kong")
-        f.dateStyle = .medium
-        f.timeStyle = .none
-        return f
-    }()
-
-    @ViewBuilder private var weightProjectionContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if draft.estimatedReachSkippedUnder18 {
-                PPCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("We’re skipping the date estimate for now.")
-                            .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
-                            .foregroundStyle(PPColor.ink)
-                        Text("For ages under 18, PandaPlate doesn’t show a weight-date projection. Your other answers still help personalize the setup.")
-                            .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
-                            .foregroundStyle(PPColor.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            } else if let date = draft.estimatedReachDate,
-                      let current = draft.currentWeightKilograms,
-                      let target = draft.targetWeightKilograms,
-                      let pace = draft.goalPace {
-                PPCard {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Estimate · not medical advice")
-                            .font(.system(size: 11, weight: .heavy, design: .rounded, relativeTo: .caption2))
-                            .tracking(0.6)
-                            .foregroundStyle(PPColor.coralInk)
-                        Text(Self.projectionDateFormatter.string(from: date))
-                            .font(.system(size: 28, weight: .black, design: .rounded, relativeTo: .title))
-                            .foregroundStyle(PPColor.ink)
-                        Text("A simple linear pace from \(current) kg toward \(target) kg at a \(pace.lowercased()) pace. Not a prescription — no BMI or daily calorie targets.")
-                            .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
-                            .foregroundStyle(PPColor.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            } else {
-                PPCard {
-                    Text("Add age, weights, and pace to see a simple date estimate. No BMI or calorie targets.")
-                        .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.muted)
-                }
-            }
-        }
-    }
-
     private var planPhases: [(String, String)] {
         [
             ("Personalizing your setup", "person.text.rectangle"),
@@ -2298,14 +2239,14 @@ struct PandaPlateCategorizedOnboardingFlow: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        Text("Create your account")
+                        Text("Connect with Apple")
                             .font(.system(size: 28, weight: .bold, design: .rounded, relativeTo: .title))
                             .foregroundStyle(PPColor.ink)
                             .frame(maxWidth: .infinity)
                             .multilineTextAlignment(.center)
                             .padding(.top, 12)
 
-                        Text("Sign in with Apple or Google to finish setup. An account is required.")
+                        Text("Sign in with Apple to continue. Meal logs stay in this app session and don’t sync.")
                             .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.muted)
                             .multilineTextAlignment(.center)
@@ -2320,21 +2261,20 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 }
 
                 VStack(spacing: 6) {
-                    Button {
+                    if hasSignedInAccount {
+                        Button {
                         focusedField = nil
                         continueFlow()
-                    } label: {
-                        Text(hasSignedInAccount ? "Enter PandaPlate" : "Sign in to continue")
-                            .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, minHeight: 56)
-                            .background(BitePalColor.ctaBlack, in: Capsule())
+                        } label: {
+                            Text("Enter PandaPlate")
+                                .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, minHeight: 56)
+                                .background(BitePalColor.ctaBlack, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("onboarding-enter-pandaplate")
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!hasSignedInAccount)
-                    .opacity(hasSignedInAccount ? 1 : 0.45)
-                    .accessibilityLabel(hasSignedInAccount ? "Enter PandaPlate" : "Sign in to continue")
-                    .accessibilityHint(hasSignedInAccount ? "" : "Sign in with Apple or Google to finish setup.")
                 }
                 .padding(.horizontal, 22)
                 .padding(.top, 8)
@@ -2353,59 +2293,27 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                 .accessibilityLabel("Pip making a heart with hands")
                 .padding(.top, 4)
 
-            VStack(spacing: 12) {
-                SignInWithAppleButton(.signIn) { request in
-                    request.requestedScopes = [.fullName, .email]
-                } onCompletion: { result in
-                    handleAppleSignIn(result)
+            PandaPlateProxySignInButtons { identity in
+                switch identity.provider {
+                case .apple:
+                    draft.appleUserIdentifier = identity.userID
+                    draft.appleEmail = identity.email
                 }
-                .signInWithAppleButtonStyle(.black)
-                .frame(maxWidth: .infinity, minHeight: 56)
-                .clipShape(Capsule())
-                .accessibilityLabel("Sign in with Apple")
-
-                // Visual twin of SignInWithAppleButton: full-width capsule, centered icon+label.
-                Button(action: startGoogleSignIn) {
-                    HStack(spacing: 10) {
-                        Spacer(minLength: 0)
-                        Image(systemName: "g.circle.fill")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Color(red: 0.26, green: 0.52, blue: 0.96))
-                            .accessibilityHidden(true)
-                        Text("Continue with Google")
-                            .font(.system(size: 17, weight: .bold, design: .rounded, relativeTo: .body))
-                            .foregroundStyle(PPColor.ink)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                    .background(Color.white, in: Capsule())
-                    .overlay(Capsule().stroke(PPColor.line.opacity(0.9), lineWidth: 1))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Continue with Google")
+                draft.continuedWithoutAccount = false
+                completeAccountAfterSignIn()
             }
-
-            if let appleSignInError {
-                Text(appleSignInError)
-                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.coralInk)
-            }
-            if let googleSignInError {
-                Text(googleSignInError)
-                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(PPColor.coralInk)
-            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("onboarding-sign-in-apple")
 
             if hasSignedInAccount {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(PPColor.coralInk)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(draft.appleUserIdentifier != nil ? "Signed in with Apple" : "Signed in with Google")
+                        Text("Signed in with Apple")
                             .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.ink)
-                        if let email = (draft.appleEmail ?? draft.googleEmail), !email.isEmpty {
+                        if let email = draft.appleEmail, !email.isEmpty {
                             Text(email)
                                 .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                                 .foregroundStyle(PPColor.muted)
@@ -2419,120 +2327,15 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         }
     }
 
-    private func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let auth):
-            guard let credential = auth.credential as? ASAuthorizationAppleIDCredential else {
-                appleSignInError = "Apple sign-in didn’t return a usable credential."
-                return
-            }
-            draft.appleUserIdentifier = credential.user
-            if let email = credential.email, !email.isEmpty {
-                draft.appleEmail = email
-            }
-            draft.continuedWithoutAccount = false
-            appleSignInError = nil
-        case .failure(let error):
-            let ns = error as NSError
-            if ns.domain == ASAuthorizationError.errorDomain, ns.code == ASAuthorizationError.canceled.rawValue {
-                appleSignInError = nil
-                return
-            }
-            appleSignInError = "Sign in with Apple couldn’t finish. Try again, or use Google."
-        }
-    }
-
-    private func startGoogleSignIn() {
-        googleSignInError = nil
-        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
-              !clientID.isEmpty else {
-            googleSignInError = "Google Sign-In needs a Client ID in Info.plist (GIDClientID)."
+    private func completeAccountAfterSignIn() {
+        guard step == .account, hasSignedInAccount else { return }
+        draft.continuedWithoutAccount = false
+        if enteredAccountFromWelcomeShortcut {
+            enteredAccountFromWelcomeShortcut = false
+            step = .mainGoal
             return
         }
-        if clientID.contains("REPLACE_WITH_GOOGLE") {
-            googleSignInError = "Google Sign-In needs a Client ID. Paste your iOS OAuth Client ID into Info.plist (GIDClientID) and set the URL scheme to the reversed client id from Google Cloud Console."
-            return
-        }
-
-        // Ensure configuration is set from Bundle (single source of truth).
-        if GIDSignIn.sharedInstance.configuration == nil {
-            GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
-        }
-
-        guard let presenter = Self.topPresentingViewController() else {
-            googleSignInError = "Couldn’t open Google Sign-In. Try again, or use Apple."
-            return
-        }
-
-        GIDSignIn.sharedInstance.signIn(withPresenting: presenter) { result, error in
-            DispatchQueue.main.async {
-                if let error {
-                    let ns = error as NSError
-                    // User cancel — soft.
-                    if ns.domain == "com.google.GIDSignIn", ns.code == -5 {
-                        googleSignInError = nil
-                        return
-                    }
-                    googleSignInError = "Google Sign-In couldn’t finish. Try again, or use Apple."
-                    return
-                }
-                guard let user = result?.user else {
-                    googleSignInError = "Google Sign-In didn’t return a usable account. Try again, or use Apple."
-                    return
-                }
-                draft.googleUserIdentifier = user.userID
-                if let email = user.profile?.email, !email.isEmpty {
-                    draft.googleEmail = email
-                }
-                draft.continuedWithoutAccount = false
-                googleSignInError = nil
-            }
-        }
-    }
-
-    /// Active window scene root for `GIDSignIn.sharedInstance.signIn(withPresenting:)`.
-    private static func topPresentingViewController() -> UIViewController? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        let active = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
-        let window = active?.windows.first(where: \.isKeyWindow) ?? active?.windows.first
-        var top = window?.rootViewController
-        while let presented = top?.presentedViewController {
-            top = presented
-        }
-        return top
-    }
-
-    private func refreshWeightProjectionEstimate() {
-        guard let age = draft.ageYears else {
-            draft.estimatedReachDate = nil
-            draft.estimatedReachSkippedUnder18 = false
-            return
-        }
-        if age < 18 {
-            draft.estimatedReachDate = nil
-            draft.estimatedReachSkippedUnder18 = true
-            return
-        }
-        draft.estimatedReachSkippedUnder18 = false
-        guard let current = draft.currentWeightKilograms,
-              let target = draft.targetWeightKilograms,
-              let pace = draft.goalPace else {
-            draft.estimatedReachDate = nil
-            return
-        }
-        let kgPerWeek: Double
-        switch pace {
-        case "Slow": kgPerWeek = 0.25
-        case "Faster": kgPerWeek = 0.75
-        default: kgPerWeek = 0.5 // Steady
-        }
-        let delta = abs(Double(current - target))
-        if delta < 0.5 {
-            draft.estimatedReachDate = Date()
-            return
-        }
-        let weeks = max(1.0, delta / kgPerWeek)
-        draft.estimatedReachDate = Calendar.current.date(byAdding: .day, value: Int((weeks * 7.0).rounded()), to: Date())
+        onComplete(draft)
     }
 
     private func startPlanBuildingAnimation() {
@@ -2612,31 +2415,22 @@ struct PandaPlateCategorizedOnboardingFlow: View {
 
     private func goBack() {
         focusedField = nil
-        // Welcome shortcut: "I already have an account" jumps to .account. rawValue-1 would land on
-        // .softPaywall (Premium). Send those users back to .welcome instead.
+        // Welcome shortcut: "I already have an account" jumps to .account. Back must return to
+        // .welcome instead of entering the setup sequence from the middle.
         if step == .account && enteredAccountFromWelcomeShortcut {
             enteredAccountFromWelcomeShortcut = false
             step = .welcome
             return
         }
-        guard let previous = Step(rawValue: max(Step.welcome.rawValue, step.rawValue - 1)) else { return }
-        step = previous
+        guard let index = activeSteps.firstIndex(of: step), index > 0 else { return }
+        step = activeSteps[index - 1]
     }
 
     private func continueFlow() {
         guard !requiredMeasurementMissing else { return }
         switch step {
-        case .reminders:
-            guard !notificationRequestBusy else { return }
-            Task { @MainActor in
-                notificationRequestBusy = true
-                await requestNotificationPermissionAfterReminders()
-                notificationRequestBusy = false
-                moveToNextStep()
-            }
         case .account:
             guard hasSignedInAccount else { return }
-            draft.continuedWithoutAccount = false
             onComplete(draft)
         case .softPaywall:
             moveToNextStep()
@@ -2648,25 +2442,64 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     }
 
     private var reminderRecapValue: String {
-        guard let pref = draft.reminderPreference else { return "Not set · not scheduled" }
-        if pref == "Set up later" { return "Set up later · not scheduled" }
-        return "\(pref) · local reminders if allowed"
+        guard let pref = draft.reminderPreference else { return "Not now · not scheduled" }
+        switch pref {
+        case "In the morning":
+            return "Daily at 8:00 AM if iOS allows"
+        case "Before each meal":
+            let firstMeal = PandaPlateOnboardingRules.isValidRequiredHourOnlyMealTime(draft.firstMealTime)
+                ? displayMealTime(draft.firstMealTime)
+                : "12:00 PM"
+            if firstMeal == "6 PM" { return "Daily at 6:00 PM if iOS allows" }
+            return "At \(firstMeal) and 6:00 PM if iOS allows"
+        default:
+            return "\(pref) · local reminders if allowed"
+        }
     }
 
-    /// After the reminders preference step, ask iOS for notification permission (system sheet) on MainActor.
-    /// Skipped when the user chose “Set up later” / left preference nil.
-    /// On grant, schedules gentle local reminders matching the preference (meal times may refine later at finish).
     @MainActor
-    private func requestNotificationPermissionAfterReminders() async {
-        guard ReminderNotifications.shouldRequest(for: draft.reminderPreference) else { return }
-        let granted = await ReminderNotifications.requestAuthorization()
-        if granted {
+    private func allowRemindersAndContinue() {
+        guard step == .reminders, draft.reminderPreference != nil, !notificationRequestBusy else { return }
+        focusedField = nil
+        Task { @MainActor in
+            notificationRequestBusy = true
+            var status = await ReminderNotifications.authorizationStatus()
+            reminderAuthorizationStatus = status
+
+            if status == .denied {
+                notificationRequestBusy = false
+                return
+            }
+
+            if status == .notDetermined {
+                let granted = await ReminderNotifications.requestAuthorization()
+                status = await ReminderNotifications.authorizationStatus()
+                reminderAuthorizationStatus = status
+                guard granted else {
+                    notificationRequestBusy = false
+                    return
+                }
+            }
+
+            guard status == .authorized || status == .provisional || status == .ephemeral else {
+                notificationRequestBusy = false
+                return
+            }
+
             await ReminderNotifications.reschedule(
                 preference: draft.reminderPreference,
                 firstMealTime: draft.firstMealTime,
                 companionName: draft.sanitizedCompanionName
             )
+            notificationRequestBusy = false
+            moveToNextStep()
         }
+    }
+
+    private func continueWithoutReminders() {
+        guard step == .reminders, !notificationRequestBusy else { return }
+        draft.reminderPreference = nil
+        moveToNextStep()
     }
 
     private func skipCurrentStep() {
@@ -2678,7 +2511,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .mealWindow: draft.firstMealTime = ""; draft.lastMealTime = ""
         case .fastingSchedule: draft.fastingSchedulePreference = nil
         case .eatingLocations: draft.eatingLocations = []
-        case .dietPreference: draft.dietPreference = nil
+        case .dietPreference: draft.dietPreference = nil; draft.foodRestrictions = []
         case .foodRestrictions: draft.foodRestrictions = ["No restrictions"]
         case .waterAdequacy: draft.waterAdequacy = nil
         case .habitChanges: draft.habitChanges = ["No change for now"]
@@ -2688,7 +2521,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
         case .connectHealth:
             draft.healthKitConnected = false
             draft.healthKitSkipped = true
-        case .extraGoals: draft.additionalGoals = []
+        case .extraGoals: draft.additionalGoals = []; draft.habitChanges = []
         case .rateApp: break
         case .softPaywall: break
         default: break
@@ -2697,8 +2530,8 @@ struct PandaPlateCategorizedOnboardingFlow: View {
     }
 
     private func moveToNextStep() {
-        guard let next = Step(rawValue: min(Step.allCases.count - 1, step.rawValue + 1)) else { return }
-        step = next
+        guard let index = activeSteps.firstIndex(of: step), index + 1 < activeSteps.count else { return }
+        step = activeSteps[index + 1]
     }
 }
 

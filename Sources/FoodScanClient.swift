@@ -28,6 +28,7 @@ struct FoodScanResponse: Decodable, Equatable {
 enum FoodScanClientError: LocalizedError, Equatable {
     case invalidURL
     case invalidImage
+    case authenticationRequired
     case httpStatus(Int)
     case serverError(code: String, message: String?)
     case decodingFailed
@@ -37,9 +38,11 @@ enum FoodScanClientError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "The scan server address isn’t valid. Check the local server URL in Settings."
+            return "The scan proxy address isn’t valid. Check the Food Scan proxy URL in Settings (Debug) or reinstall."
         case .invalidImage:
             return "That photo couldn’t be prepared for scanning. Try another still image."
+        case .authenticationRequired:
+            return "Your scan session is missing or expired. Sign in again to scan; manual logging is still available."
         case .httpStatus(let code):
             return "The scan server returned an unexpected response (\(code))."
         case .serverError(let code, let message):
@@ -47,7 +50,7 @@ enum FoodScanClientError: LocalizedError, Equatable {
         case .decodingFailed:
             return "The scan response couldn’t be read. Nothing was saved."
         case .network(let detail):
-            return "Couldn’t reach the local PandaPlate Server. \(detail)"
+            return "Couldn’t reach the PandaPlate scan server. \(detail)"
         case .emptyCandidate:
             return "No food was identified in that photo."
         }
@@ -55,14 +58,11 @@ enum FoodScanClientError: LocalizedError, Equatable {
 }
 
 enum FoodScanClient {
-    static let defaultBaseURL = "http://127.0.0.1:8787"
-    static let baseURLDefaultsKey = "pandaplate.scanBaseURL"
+    static let defaultBaseURL = PandaPlateProxyConfiguration.defaultBaseURL
+    static let baseURLDefaultsKey = PandaPlateProxyConfiguration.baseURLDefaultsKey
 
     static var configuredBaseURL: URL {
-        let raw = UserDefaults.standard.string(forKey: baseURLDefaultsKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let value = (raw?.isEmpty == false) ? raw! : defaultBaseURL
-        return URL(string: value) ?? URL(string: defaultBaseURL)!
+        (try? PandaPlateProxyConfiguration.baseURL()) ?? URL(string: defaultBaseURL)!
     }
 
     static func jpegBase64(from image: UIImage, maxBytes: Int = 900_000) -> String? {
@@ -76,13 +76,32 @@ enum FoodScanClient {
         return final.base64EncodedString()
     }
 
-    static func scan(image: UIImage, consent: Bool = true) async throws -> FoodScanResponse {
+    static func scan(image: UIImage, consent: Bool) async throws -> FoodScanResponse {
         guard consent else { throw FoodScanClientError.serverError(code: "explicit_live_consent_required", message: nil) }
+        let proxySession: PandaPlateProxySession
+        do {
+            guard let validSession = try PandaPlateProxyAuthService.shared.validSession() else {
+                throw FoodScanClientError.authenticationRequired
+            }
+            proxySession = validSession
+        } catch let error as FoodScanClientError {
+            throw error
+        } catch {
+            throw FoodScanClientError.serverError(code: "proxy_session_unavailable", message: error.localizedDescription)
+        }
         guard let base64 = jpegBase64(from: image) else { throw FoodScanClientError.invalidImage }
-        let url = configuredBaseURL.appendingPathComponent("v1/scan")
+        let baseURL: URL
+        do {
+            baseURL = try PandaPlateProxyConfiguration.baseURL()
+        } catch {
+            throw FoodScanClientError.invalidURL
+        }
+        let url = baseURL.appending(path: "v1/scan")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        request.setValue("Bearer \(proxySession.sessionToken)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 60
         let body: [String: Any] = [
             "mode": "live",
@@ -119,22 +138,32 @@ enum FoodScanClient {
 
         if let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let code = payload["error"] as? String {
+            if http.statusCode == 401 || code == "unauthorized" {
+                PandaPlateProxyAuthService.shared.clearSession()
+                throw FoodScanClientError.authenticationRequired
+            }
             let message = payload["message"] as? String
             throw FoodScanClientError.serverError(code: code, message: message)
+        }
+        if http.statusCode == 401 {
+            PandaPlateProxyAuthService.shared.clearSession()
+            throw FoodScanClientError.authenticationRequired
         }
         throw FoodScanClientError.httpStatus(http.statusCode)
     }
 
     static func userMessage(forServerCode code: String, fallback: String?) -> String {
         switch code {
+        case "unauthorized", "proxy_session_unavailable":
+            return "Your scan session is missing or expired. Sign in again to scan; manual logging is still available."
         case "live_scan_not_enabled":
-            return "Live food scan isn’t enabled on the local server right now."
+            return "Live Food Scan isn’t enabled on the proxy right now. Try again later, or log manually."
         case "explicit_live_consent_required":
             return "Confirm consent before sending this photo for recognition."
         case "one_live_test_already_used_or_in_progress":
-            return "The one-shot live test was already used. Restart the server in continuous live mode for more scans."
+            return "This proxy’s one-shot live test was already used. Continuous mode is required for more scans."
         case "deepseek_key_missing":
-            return "The local server is missing its vision provider configuration."
+            return "The scan proxy is missing its vision provider configuration."
         case "deepseek_request_failed":
             return "The vision provider couldn’t finish this scan. Try again in a moment."
         case "usda_request_failed":
@@ -146,7 +175,7 @@ enum FoodScanClient {
         case "invalid_image_or_image_too_large":
             return "That image wasn’t accepted. Use a smaller JPEG or PNG under about 1 MB."
         case "request_too_large":
-            return "That photo is too large for the local scan request."
+            return "That photo is too large for the scan request."
         case "scan_failed":
             return fallback ?? "The scan didn’t complete. Nothing was saved."
         default:

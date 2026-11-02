@@ -18,9 +18,9 @@ Progress/History contains clearly illustrative charts and actual current-session
 
 ## Explicitly unavailable
 
-Food recognition, barcode lookup, DeepSeek/USDA requests, scan progress/results, meal-detail feedback, reminders, Health integration, persistent history, sync and accounts are unavailable. A chosen photo is only attached to a manual meal and is not uploaded or analyzed. The app returns no mock food results and does not imply that a scan happened.
+Barcode lookup, reliable hosted recognition, reminders, Health integration, persistent history and sync are unavailable. After a person reviews the disclosure and opts in, the scan screen can attempt a request to the local proxy. In the default setup the proxy’s live route is disabled, so no DeepSeek or USDA request succeeds; manual logging and photo notes remain available.
 
-The experimental local proxy in `Server/` is not called by the app and is not a hosted service. Keep its live provider mode off. Do not add provider keys to the app or repository, and do not use the previously consumed one-shot route for new photos.
+`Server/` is a development-only proxy, not a hosted service. It binds to loopback, has no user authentication or durable rate limits, and must keep live mode disabled. The local server can accept a consented image request from the app when explicitly enabled, but it is not safe for LAN or public use. Do not add provider keys to the app or repository, and do not use the previously consumed one-shot route for new photos.
 
 ## Verification
 
