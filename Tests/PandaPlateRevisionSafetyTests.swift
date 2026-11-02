@@ -3,8 +3,17 @@ import XCTest
 
 @MainActor
 final class PandaPlateRevisionSafetyTests: XCTestCase {
+    /// App Store / Legal / Privacy are 13+. Do not lower this — age-10 regressions fail review honesty.
+    func testAllowedAgeYearsFloorIsThirteenPlus() {
+        XCTAssertEqual(PandaPlateOnboardingRules.allowedAgeYears.lowerBound, 13)
+        XCTAssertEqual(PandaPlateOnboardingRules.allowedAgeYears.upperBound, 100)
+        XCTAssertFalse(PandaPlateOnboardingRules.allowedAgeYears.contains(10))
+        XCTAssertFalse(PandaPlateOnboardingRules.allowedAgeYears.contains(12))
+        XCTAssertTrue(PandaPlateOnboardingRules.allowedAgeYears.contains(13))
+    }
+
     func testAgeRangeAndBodyProfileStayNonNumericAndNeutral() {
-        XCTAssertEqual(PandaPlateOnboardingRules.allowedAgeYears, 10...100)
+        XCTAssertEqual(PandaPlateOnboardingRules.allowedAgeYears, 13...100)
 
         var firstProfile = PandaPlateOnboardingDraft()
         firstProfile.ageYears = 17
