@@ -171,6 +171,9 @@ final class AppStore: ObservableObject {
         previousWaterServingsML = waterServingsML
         canUndoWaterChange = true
         waterServingsML = updated
+        if amountML != nil {
+            SoftShowUpStore.shared.markSeen()
+        }
         return true
     }
 
@@ -201,6 +204,7 @@ final class AppStore: ObservableObject {
               (1...WorkoutFeatureRules.maximumCustomDuration).contains(durationMinutes),
               workouts.count < WorkoutFeatureRules.maximumSessionEntries else { return false }
         workouts.append(WorkoutEntry(activity: trimmed, durationMinutes: durationMinutes, time: time, activeEnergyKcal: kcal))
+        SoftShowUpStore.shared.markSeen()
         return true
     }
 

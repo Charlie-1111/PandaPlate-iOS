@@ -67,4 +67,12 @@ final class ScanQuotaStore: ObservableObject {
         }
         return "Live scans today: \(scansUsedToday) of \(Self.freeDailyLimit) (Free), when the scan server is connected."
     }
+
+    /// Scan-entry chip — e.g. “2 of 3 left today”. Premium hides the free cap.
+    func freeScansRemainingChip(isPremium: Bool) -> String? {
+        refreshDayIfNeeded()
+        if isPremium { return nil }
+        let left = max(0, Self.freeDailyLimit - scansUsedToday)
+        return "\(left) of \(Self.freeDailyLimit) left today"
+    }
 }

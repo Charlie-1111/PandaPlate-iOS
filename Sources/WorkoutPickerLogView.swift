@@ -446,6 +446,7 @@ struct WorkoutPickerLogView: View {
             return
         }
         workouts.append(entry)
+        SoftShowUpStore.shared.markSeen()
         onFinish()
     }
 

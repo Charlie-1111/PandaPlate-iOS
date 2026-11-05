@@ -1,27 +1,27 @@
 import SwiftUI
 
 enum PPColor {
-    // Forest + paper are the default product palette; warm coral is reserved for small accents.
-    static let forest = Color(red: 0.184, green: 0.416, blue: 0.310)       // #2F6A4F
-    static let forestDeep = Color(red: 0.145, green: 0.298, blue: 0.231)   // #254C3B
-    static let accentCoral = Color(red: 0.835, green: 0.322, blue: 0.275) // #D45446
-    static let cream = Color(red: 0.965, green: 0.953, blue: 0.918)       // #F6F3EA
-    static let card = Color(red: 0.998, green: 0.992, blue: 0.973)         // #FFFEF8
-    static let softBlue = Color(red: 0.902, green: 0.937, blue: 0.957)     // #E6EFF4
-    static let sage = Color(red: 0.886, green: 0.925, blue: 0.875)         // #E2ECDC
+    // Wave 1: warm cream stage, orange CTAs/FAB/focus, forest secondary only.
+    static let forest = Color(red: 0.184, green: 0.416, blue: 0.310)       // #2F6A4F secondary
+    static let forestDeep = Color(red: 0.145, green: 0.298, blue: 0.231)   // #254C3B secondary
+    static let accentCoral = Color(red: 0.769, green: 0.361, blue: 0.243) // #C45C3E CTAs/FAB/focus
+    static let cream = Color(red: 0.965, green: 0.953, blue: 0.918)       // #F6F3EA stage
+    static let card = Color(red: 0.998, green: 0.992, blue: 0.973)         // #FFFEF8 cards
+    static let softBlue = Color(red: 0.902, green: 0.937, blue: 0.957)     // #E6EFF4 demoted helper
+    static let sage = Color(red: 0.886, green: 0.925, blue: 0.875)         // #E2ECDC demoted helper
     static let ink = Color(red: 0.125, green: 0.204, blue: 0.157)         // #203429
     static let muted = Color(red: 0.345, green: 0.408, blue: 0.365)       // #58685D
     static let line = Color(red: 0.839, green: 0.875, blue: 0.831)        // #D6DFD4
-    static let selectedWash = Color(red: 0.882, green: 0.925, blue: 0.886) // #E1ECE2
+    static let selectedWash = Color(red: 0.965, green: 0.890, blue: 0.855) // warm wash from accent
 
-    // Source-compatible aliases while existing screens migrate to semantic names.
-    static let coral = forest
-    static let coralInk = forestDeep
+    // Semantic aliases — CTAs resolve to orange; forest stays explicit secondary.
+    static let coral = accentCoral
+    static let coralInk = accentCoral
     static let mint = sage
     static let lavender = softBlue
-    static let peach = softBlue
-    static let primary = forest
-    static let primaryInk = forestDeep
+    static let peach = Color(red: 0.980, green: 0.925, blue: 0.890) // warm peach, not powder-blue
+    static let primary = accentCoral
+    static let primaryInk = accentCoral
     static let border = line
 }
 
@@ -61,29 +61,28 @@ enum PPType {
     }
 }
 
-/// BitePal-parity chrome for onboarding beats Charlie wants visually copied.
-/// Pip art stays PP_*; backgrounds/CTAs/selection follow BitePal frames.
+/// Compatibility chrome names. Wave 1 demotes BitePal mint / powder-blue from primary stage.
+/// Pip original assets stay unchanged; CTAs resolve through PPColor.accentCoral.
 enum BitePalColor {
-    /// Mint green sampled from pip-peek-swipe.gif intro video (RGB 184,227,202).
-    /// Source of truth for meet-pet / reveal / Pip rise backgrounds.
+    /// Kept for Pip intro video frame samples only — not primary chrome.
     static let introVideoGreen = Color(red: 184.0 / 255.0, green: 227.0 / 255.0, blue: 202.0 / 255.0) // #B8E3CA
-    /// Meet-pet / reveal soft mint (aligned to intro video green).
-    static let mintScreen = Color(red: 184.0 / 255.0, green: 227.0 / 255.0, blue: 202.0 / 255.0) // #B8E3CA
-    /// Warm paper question surface with a soft-blue helper pill.
+    /// Meet-pet / reveal: cream stage (mint demoted from primary chrome).
+    static let mintScreen = PPColor.cream
+    /// Warm paper question surface; tip pill uses sage, not powder-blue.
     static let questionBG = PPColor.cream
-    static let tipPill = PPColor.softBlue
-    /// Soft blue replaces the old pink field; coral remains a small decorative accent only.
-    static let pinkScreen = Color(red: 0.925, green: 0.949, blue: 0.965) // #ECF2F6
+    static let tipPill = PPColor.sage
+    /// Soft cream helper field (powder-blue demoted).
+    static let pinkScreen = PPColor.cream
     static let starSalmon = PPColor.accentCoral
-    /// Eating-habits mint room wall.
-    static let kitchenMint = PPColor.sage
+    /// Eating-habits room wall — cream stage, sage secondary only.
+    static let kitchenMint = PPColor.cream
     static let kitchenFloor = PPColor.cream
-    /// Account light blue tint.
-    static let accountBlue = PPColor.softBlue
-    /// Deep forest pill CTAs.
-    static let ctaBlack = PPColor.forestDeep
-    /// Selection accent green.
-    static let selectGreen = PPColor.forest
+    /// Account tint — cream, not powder-blue.
+    static let accountBlue = PPColor.cream
+    /// CTAs use orange accent (Wave 1), not forest twin.
+    static let ctaBlack = PPColor.accentCoral
+    /// Selection uses orange focus; forest remains available as PPColor.forest.
+    static let selectGreen = PPColor.accentCoral
     static let selectFill = PPColor.selectedWash
     static let whiteCard = PPColor.card
     static let titleGrey = PPColor.muted
@@ -97,14 +96,13 @@ enum BitePalColor {
 
 
 extension Font {
-    /// BitePal-style ultra-heavy condensed grotesk for display; body stays Avenir Next.
-    /// System faces only — no licensed webfont. Prefer AvenirNextCondensed-Heavy; fall back to HelveticaNeue-CondensedBlack.
+    /// PandaPlate display uses Avenir Next Heavy (condensed BitePal twin demoted).
+    /// System faces only — no licensed webfont.
     static func system(size: CGFloat, weight: Font.Weight, design: Font.Design, relativeTo textStyle: Font.TextStyle) -> Font {
         let face: String
         switch weight {
         case .black, .heavy:
-            // Condensed display for large titles / CTAs (welcome, paywall, onboarding headlines).
-            face = size >= 22 ? "AvenirNextCondensed-Heavy" : "AvenirNext-Heavy"
+            face = "AvenirNext-Heavy"
         case .bold: face = "AvenirNext-Bold"
         case .semibold: face = "AvenirNext-DemiBold"
         case .medium: face = "AvenirNext-Medium"
@@ -113,9 +111,9 @@ extension Font {
         return .custom(face, size: size, relativeTo: textStyle)
     }
 
-    /// Explicit condensed black for BitePal-parity display headlines.
+    /// Explicit display face — non-condensed to differentiate from BitePal chrome.
     static func ppDisplay(size: CGFloat, relativeTo textStyle: Font.TextStyle = .largeTitle) -> Font {
-        .custom("AvenirNextCondensed-Heavy", size: size, relativeTo: textStyle)
+        .custom("AvenirNext-Heavy", size: size, relativeTo: textStyle)
     }
 }
 

@@ -3,6 +3,49 @@
 
 import SwiftUI
 
+
+/// Compact Home chip — “Showed up N days” with a calm Pip nod. Never hungry/sad / heart meter.
+struct SoftShowUpHomeChip: View {
+    @ObservedObject var store: SoftShowUpStore = .shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: 10) {
+            PipMascot(size: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(store.homeChipLine)
+                    .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .contentTransition(reduceMotion ? .identity : .opacity)
+                if store.isSeenToday {
+                    Text(SoftShowUpCopy.homeChipPipNod)
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.accentCoral)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(PPColor.line.opacity(0.8), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLine)
+    }
+
+    private var accessibilityLine: String {
+        if store.isSeenToday {
+            return "\(store.homeChipLine). \(SoftShowUpCopy.homeChipPipNod)"
+        }
+        return store.homeChipLine
+    }
+}
+
 /// Compact presence card — Progress History / Profile.
 struct SoftShowUpPresenceCard: View {
     @ObservedObject var store: SoftShowUpStore = .shared

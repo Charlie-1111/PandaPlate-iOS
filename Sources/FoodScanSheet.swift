@@ -201,9 +201,17 @@ struct FoodScanSheet: View {
                 .accessibilityLabel("Close")
 
                 Spacer()
-                Text("Snap your meal")
-                    .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
-                    .foregroundStyle(PPColor.ink)
+                VStack(spacing: 2) {
+                    Text("Snap your meal")
+                        .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
+                        .foregroundStyle(PPColor.ink)
+                    if let chip = quota.freeScansRemainingChip(isPremium: premium.isPremium) {
+                        Text(chip)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.accentCoral)
+                            .accessibilityLabel("Free scans remaining, \(chip)")
+                    }
+                }
                 Spacer()
                 Color.clear.frame(width: 40, height: 40)
             }

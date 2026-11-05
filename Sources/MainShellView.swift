@@ -273,7 +273,7 @@ struct MainShellView: View {
                 .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 84 : 64)
                 .background(PPColor.card, in: Capsule())
                 .overlay(Capsule().stroke(PPColor.line, lineWidth: 1))
-                .shadow(color: PPColor.forestDeep.opacity(0.12), radius: 9, y: 3)
+                .shadow(color: PPColor.ink.opacity(0.08), radius: 9, y: 3)
 
                 Spacer(minLength: 0)
 
@@ -282,8 +282,8 @@ struct MainShellView: View {
                         .font(.system(size: 27, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(width: plusSize, height: plusSize)
-                        .background(PPColor.forestDeep, in: Circle())
-                        .shadow(color: PPColor.forestDeep.opacity(0.22), radius: 8, y: 3)
+                        .background(PPColor.accentCoral, in: Circle())
+                        .shadow(color: PPColor.accentCoral.opacity(0.28), radius: 8, y: 3)
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -295,7 +295,7 @@ struct MainShellView: View {
             .padding(.top, 8)
             .padding(.bottom, 8)
             .frame(width: proxy.size.width, height: proxy.size.height)
-            .background(PPColor.card.opacity(0.96))
+            .background(PPColor.cream.opacity(0.98))
             .overlay(alignment: .top) {
                 Rectangle().fill(PPColor.line.opacity(0.9)).frame(height: 1)
             }
@@ -320,7 +320,7 @@ struct MainShellView: View {
                 ZStack {
                     if selected {
                         Circle()
-                            .fill(PPColor.forestDeep)
+                            .fill(PPColor.accentCoral)
                             .frame(width: 36, height: 36)
                     }
                     Image(systemName: symbol)
@@ -329,7 +329,7 @@ struct MainShellView: View {
                 }
                 Text(title)
                     .font(.system(size: 11, weight: selected ? .bold : .semibold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(selected ? PPColor.forestDeep : PPColor.muted)
+                    .foregroundStyle(selected ? PPColor.accentCoral : PPColor.muted)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.75)
                     .multilineTextAlignment(.center)
@@ -489,6 +489,7 @@ private struct TodayDashboard: View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 17) {
                 topBar
+                SoftShowUpHomeChip()
                 PipWorldDashboard()
                     .environmentObject(store)
                 sessionSummary
@@ -514,7 +515,8 @@ private struct TodayDashboard: View {
         HStack(spacing: 11) {
             PipMascot(size: 46)
                 .padding(4)
-                .background(PPColor.softBlue, in: Circle())
+                .background(PPColor.card, in: Circle())
+                .overlay(Circle().stroke(PPColor.line.opacity(0.85), lineWidth: 1))
             VStack(alignment: .leading, spacing: 2) {
                 Text(store.userName.isEmpty ? greeting + "!" : "\(greeting), \(store.userName)!")
                     .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .subheadline))
