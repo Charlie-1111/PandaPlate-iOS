@@ -163,7 +163,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             case .attribution: "megaphone.fill"
             case .trackingExperience: "square.and.pencil"
             case .fastingFamiliarity, .fastingContext, .fastingSchedule: "moon.stars.fill"
-            case .pipTeaser, .pipReveal, .pipName, .userName, .tone, .toneInterstitial: "heart.fill"
+            case .pipTeaser, .pipReveal, .pipName, .userName, .tone, .toneInterstitial: "pawprint.fill"
             case .reminders: "bell.badge.fill"
             case .routineIntro, .mealsPerDay, .eatingLocations, .dietPreference, .foodRestrictions: "fork.knife"
             case .mealWindow: "clock.fill"
@@ -182,7 +182,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             case .rateApp: "star.fill"
             case .softPaywall: "sparkles"
             case .account: "person.crop.circle.badge.checkmark"
-            case .welcome: "heart.fill"
+            case .welcome: "leaf.fill"
             }
         }
 
@@ -573,7 +573,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             toneChoices
         case .toneInterstitial:
             reassuranceCards([
-                ("Small steps count", "Pip offers support, not pressure.", "heart.fill"),
+                ("Small steps count", "Pip offers support, not pressure.", "leaf.fill"),
                 ("You set the pace", "There’s no streak or perfect-day test.", "leaf.fill")
             ])
         case .reminders:
@@ -833,7 +833,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
 
             PPCard {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("What we read", systemImage: "heart.fill")
+                    Label("What we read", systemImage: "leaf.fill")
                         .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                         .foregroundStyle(PPColor.ink)
                     Text("Steps, active energy, exercise minutes, and recent workouts. We don’t write to Health in this version. Simulator support is limited — connect may no-op there.")
@@ -1057,7 +1057,7 @@ struct PandaPlateCategorizedOnboardingFlow: View {
             if !draft.habitChanges.isEmpty {
                 recapCard("Habit notes", value: draft.habitChanges.sorted().joined(separator: ", "), symbol: "leaf.fill")
             }
-            recapCard("Pip’s style", value: draft.pipStyle.rawValue, symbol: "heart.fill")
+            recapCard("Pip’s style", value: draft.pipStyle.rawValue, symbol: "pawprint.fill")
             recapCard("Pip calls you", value: draft.sanitizedUserName, symbol: "person.fill")
             recapCard("Companion name", value: draft.sanitizedCompanionName, symbol: "pawprint.fill")
             recapCard("Food-log experience", value: draft.loggingFamiliarity, symbol: "square.and.pencil")

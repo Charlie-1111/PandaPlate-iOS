@@ -10,30 +10,27 @@ struct SoftShowUpHomeChip: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: PPSpacing.small) {
             PipMascot(size: 28)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
+                .scaleEffect(store.isSeenToday && !reduceMotion ? 1.0 : 1.0)
+            VStack(alignment: .leading, spacing: PPSpacing.xSmall) {
                 Text(store.homeChipLine)
-                    .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .font(PPType.chip(14, weight: .bold))
                     .foregroundStyle(PPColor.ink)
                     .contentTransition(reduceMotion ? .identity : .opacity)
                 if store.isSeenToday {
                     Text(SoftShowUpCopy.homeChipPipNod)
-                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .font(PPType.caption2(11, weight: .medium))
                         .foregroundStyle(PPColor.accentCoral)
                 }
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, PPSpacing.medium)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(PPColor.line.opacity(0.8), lineWidth: 1)
-        )
+        .ppWarmCardChrome(cornerRadius: 16, elevated: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLine)
     }
@@ -59,18 +56,18 @@ struct SoftShowUpPresenceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(SoftShowUpCopy.title.uppercased())
-                .font(.system(size: 9, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                .font(PPType.caption2(9, weight: .heavy))
                 .tracking(1)
                 .foregroundStyle(PPColor.muted)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityLabel(SoftShowUpCopy.title)
 
             Text(SoftShowUpCopy.countLabel)
-                .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
+                .font(PPType.caption(13, weight: .bold))
                 .foregroundStyle(PPColor.ink)
 
             Text(store.countHeadline)
-                .font(.system(size: 20, weight: .black, design: .rounded, relativeTo: .title3))
+                .font(PPType.title2(20, weight: .bold))
                 .foregroundStyle(PPColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
 

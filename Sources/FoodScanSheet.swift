@@ -728,7 +728,8 @@ private struct ScanResultCardView: View {
         VStack(spacing: 0) {
             header
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: PPSpacing.large) {
+                    usdaHonestyBanner
                     mealHeader
                     if !fdcMatches.isEmpty {
                         fdcPinRow
@@ -736,15 +737,14 @@ private struct ScanResultCardView: View {
                     mealMeta
                     calorieBlock
                     plateStoryField
-                    usdaHonestyBanner
                     honestyNotes
-                    Text("Photo estimates can vary — edit anything before saving.")
-                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    Text("Photo estimates can vary — edit anything before saving. Unknown stays blank, never zero.")
+                        .font(PPType.caption2(11, weight: .medium))
                         .foregroundStyle(PPColor.muted)
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 4)
+                        .padding(.top, PPSpacing.xSmall)
                 }
-                .padding(18)
+                .padding(PPSpacing.pageInset)
             }
             saveBar
         }
@@ -841,12 +841,8 @@ private struct ScanResultCardView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(14)
-        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(PPColor.line.opacity(0.6), lineWidth: 1)
-        )
+        .padding(PPSpacing.large)
+        .ppWarmCardChrome(cornerRadius: 20, elevated: true)
     }
 
     private var mealMeta: some View {
@@ -912,17 +908,24 @@ private struct ScanResultCardView: View {
     }
 
     private var plateStoryField: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: PPSpacing.small) {
             Text("Plate Story")
-                .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
+                .font(PPType.caption2(11, weight: .semibold))
                 .foregroundStyle(PPColor.muted)
             TextField("Optional one-line note", text: $plateStory)
-                .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
+                .font(PPType.callout(14, weight: .medium))
                 .foregroundStyle(PPColor.ink)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, PPSpacing.medium)
                 .padding(.vertical, 10)
                 .background(PPColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(PPColor.accentCoral.opacity(0.35), lineWidth: 1)
+                )
                 .accessibilityLabel("Plate Story optional note")
+            Text("Optional one-line note for the Home plate stack. Not an award.")
+                .font(PPType.caption2(11, weight: .medium))
+                .foregroundStyle(PPColor.muted)
         }
     }
 
@@ -963,23 +966,28 @@ private struct ScanResultCardView: View {
     }
 
     private var saveBar: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: PPSpacing.small) {
             Button(action: onSave) {
                 Text("Save to \(mealType.lowercased())")
-                    .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .headline))
+                    .font(PPType.headline(16, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(canSave ? PPColor.coralInk : PPColor.muted.opacity(0.45), in: Capsule())
+                    .background(canSave ? PPColor.accentCoral : PPColor.muted.opacity(0.45), in: Capsule())
             }
             .buttonStyle(.plain)
             .disabled(!canSave)
+            .accessibilityLabel("Save plate")
 
             Button("Scan again", action: onScanAgain)
-                .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                .foregroundStyle(PPColor.coralInk)
+                .font(PPType.caption(13, weight: .semibold))
+                .foregroundStyle(PPColor.muted)
+                .frame(minHeight: 44)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.horizontal, PPSpacing.pageInset)
+        .padding(.vertical, PPSpacing.medium)
         .background(PPColor.cream.opacity(0.96))
+        .overlay(alignment: .top) {
+            Rectangle().fill(PPColor.line.opacity(0.7)).frame(height: 1)
+        }
     }
 }

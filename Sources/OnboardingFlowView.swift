@@ -42,7 +42,7 @@ struct OnboardingFlowView: View {
             }
         }
         .background(PPColor.cream.ignoresSafeArea())
-        .animation(.easeInOut(duration: 0.2), value: step)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: step)
     }
 
     private var fullScreenTeaser: some View {
@@ -85,25 +85,24 @@ struct OnboardingFlowView: View {
                 onboardingHeader
 
                 Spacer(minLength: 20)
-                VStack(spacing: 12) {
+                VStack(spacing: PPSpacing.medium) {
                     Text("YOUR LITTLE WORLD")
-                        .font(.system(size: 11, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                        .font(PPType.caption2(11, weight: .heavy))
                         .tracking(1.5)
-                        .foregroundStyle(PPColor.coralInk)
+                        .foregroundStyle(PPColor.accentCoral)
                     Text("Someone’s here to say hello")
-                        .font(.system(size: 32, weight: .black, design: .rounded, relativeTo: .largeTitle))
+                        .font(PPType.largeTitle(30, weight: .bold))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(PPColor.ink)
                     Text("A friendly new face is waiting just around the corner.")
-                        .font(.system(size: 15, weight: .medium, design: .rounded, relativeTo: .subheadline))
+                        .font(PPType.callout(15, weight: .medium))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(PPColor.ink.opacity(0.84))
                 }
-                .padding(.horizontal, 22)
-                .padding(.vertical, 22)
+                .padding(.horizontal, PPSpacing.xLarge)
+                .padding(.vertical, PPSpacing.xLarge)
                 .frame(maxWidth: 430)
-                .background(PPColor.card.opacity(0.94), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(.white.opacity(0.75), lineWidth: 1))
+                .ppWarmCardChrome(cornerRadius: 28, elevated: true)
 
                 Spacer(minLength: 24)
                 VStack(spacing: 8) {

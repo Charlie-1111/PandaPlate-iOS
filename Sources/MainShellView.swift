@@ -98,8 +98,11 @@ struct MainShellView: View {
         Group {
             switch tab {
             case .home:
-                TodayDashboard(onSettingsTap: { tab = .profile })
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
+                TodayDashboard(
+                        onSettingsTap: { tab = .profile },
+                        onLogPlate: { activeSheet = .quickLog }
+                    )
+                    .transition(PPMotion.tabContentTransition(reduceMotion: reduceMotion))
             case .pip:
                 ChallengesDashboard(
                     onMealTap: { openMealLog(.manual) },
@@ -107,7 +110,7 @@ struct MainShellView: View {
                     onWorkoutTap: { activeSheet = .workout }
                 )
                 .environmentObject(store)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
+                .transition(PPMotion.tabContentTransition(reduceMotion: reduceMotion))
             case .progress:
                 ProgressDashboard(
                     showingHistory: statsShowsHistory,
@@ -115,11 +118,11 @@ struct MainShellView: View {
                 )
                 .id(statsShowsHistory)
                 .environmentObject(store)
-                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
+                .transition(PPMotion.tabContentTransition(reduceMotion: reduceMotion))
             case .profile:
                 ProfileView(isPresentedAsSheet: false)
                     .environmentObject(store)
-                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
+                    .transition(PPMotion.tabContentTransition(reduceMotion: reduceMotion))
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -261,33 +264,32 @@ struct MainShellView: View {
     private var bottomBar: some View {
         GeometryReader { proxy in
             let horizontalInset: CGFloat = 10
-            let plusSize: CGFloat = 62
+            let plusSize: CGFloat = max(PPIcon.fabHit, 56)
 
-            HStack(spacing: 4) {
+            HStack(spacing: PPSpacing.xSmall) {
                 tabButton(.home, title: "Home", symbol: "house.fill")
                 tabButton(.pip, title: "Pip", symbol: "pawprint.fill")
 
                 Button { activeSheet = .quickLog } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 25, weight: .bold))
+                        .font(.system(size: PPIcon.fabPlusPointSize, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(width: plusSize, height: plusSize)
                         .background(PPColor.accentCoral, in: Circle())
                         .shadow(color: PPColor.accentCoral.opacity(0.28), radius: 8, y: 3)
                         .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PPFABPressStyle())
                 .accessibilityLabel("Quick actions")
                 .accessibilityHint("Opens meal, water, workout, weight and fasting actions")
-                .buttonStyle(PPQuickActionsPressStyle())
                 .padding(.horizontal, 2)
 
                 tabButton(.progress, title: "Progress", symbol: "chart.bar.fill")
                 tabButton(.profile, title: "Profile", symbol: "person.fill")
             }
             .padding(.horizontal, horizontalInset)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
+            .padding(.top, PPSpacing.small)
+            .padding(.bottom, PPSpacing.small)
             .frame(width: proxy.size.width, height: proxy.size.height)
             .background(PPColor.cream.opacity(0.98))
             .overlay(alignment: .top) {
@@ -305,24 +307,18 @@ struct MainShellView: View {
                 tab = item
             }
             if reduceMotion {
-                selectTab()
+                withAnimation(.easeInOut(duration: 0.18), selectTab)
             } else {
                 withAnimation(.spring(response: 0.28, dampingFraction: 0.86), selectTab)
             }
         } label: {
-            VStack(spacing: 1) {
-                ZStack {
-                    if selected {
-                        Circle()
-                            .fill(PPColor.accentCoral)
-                            .frame(width: 36, height: 36)
-                    }
-                    Image(systemName: symbol)
-                        .font(.system(size: 18, weight: selected ? .bold : .semibold))
-                        .foregroundStyle(selected ? .white : PPColor.muted)
-                }
+            VStack(spacing: PPSpacing.xSmall) {
+                Image(systemName: symbol)
+                    .font(.system(size: PPIcon.tabPointSize, weight: selected ? .medium : .regular))
+                    .foregroundStyle(selected ? PPColor.accentCoral : PPColor.muted)
+                    .frame(width: 44, height: 28)
                 Text(title)
-                    .font(.system(size: 11, weight: selected ? .bold : .semibold, design: .rounded, relativeTo: .caption))
+                    .font(PPType.caption2(11, weight: selected ? .bold : .medium))
                     .foregroundStyle(selected ? PPColor.accentCoral : PPColor.muted)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(dynamicTypeSize.isAccessibilitySize ? 1 : 0.75)
@@ -338,55 +334,38 @@ struct MainShellView: View {
     }
 }
 
-private struct PPQuickActionsPressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.94 : 1)
-            .animation(
-                reduceMotion ? nil : .spring(response: 0.18, dampingFraction: 0.72),
-                value: configuration.isPressed
-            )
-    }
-}
-
 struct PlateStoryCard: View {
     let meal: MealEntry
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: PPSpacing.medium) {
             plateThumb
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: PPSpacing.xSmall) {
                 Text(meal.name)
-                    .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .font(PPType.callout(14, weight: .semibold))
                     .foregroundStyle(PPColor.ink)
                     .lineLimit(2)
                 if let story = meal.plateStory, !story.isEmpty {
                     Text(story)
-                        .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
+                        .font(PPType.caption(12, weight: .medium))
                         .foregroundStyle(PPColor.muted)
                         .lineLimit(2)
                 }
-                HStack(spacing: 8) {
+                HStack(spacing: PPSpacing.small) {
                     Text(meal.time.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .font(PPType.caption2(11, weight: .medium))
                         .foregroundStyle(PPColor.muted)
                     Text(meal.calories.map { "\($0) kcal" } ?? "kcal unknown")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
+                        .font(PPType.caption2(11, weight: .semibold))
                         .foregroundStyle(PPColor.accentCoral)
                 }
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(PPSpacing.large)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(PPColor.line.opacity(0.8), lineWidth: 1)
-        )
+        .ppWarmCardChrome(cornerRadius: 18, elevated: true)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessLabel)
     }
@@ -429,12 +408,12 @@ private struct ChallengesDashboard: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: PPSpacing.large) {
                 Text("Pip")
-                    .font(.system(size: 27, weight: .black, design: .rounded, relativeTo: .largeTitle))
+                    .font(PPType.largeTitle(28, weight: .bold))
                     .foregroundStyle(PPColor.ink)
                 Text("Pip’s Little World — three small choices. Progress follows your actual logs, at your pace.")
-                    .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .body))
+                    .font(PPType.callout(14, weight: .medium))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -471,7 +450,9 @@ private struct ChallengesDashboard: View {
                     .foregroundStyle(PPColor.muted)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(18)
+            .padding(.horizontal, PPSpacing.pageInset)
+            .padding(.top, PPSpacing.tabContentTop)
+            .padding(.bottom, PPSpacing.large)
         }
         .background(PPColor.cream)
     }
@@ -531,6 +512,7 @@ private struct TodayDashboard: View {
     @EnvironmentObject private var store: AppStore
     @ObservedObject private var premium = PremiumAccess.shared
     let onSettingsTap: () -> Void
+    var onLogPlate: () -> Void = {}
 
     @State private var showNutritionPaywall = false
 
@@ -551,7 +533,7 @@ private struct TodayDashboard: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 17) {
+            VStack(alignment: .leading, spacing: PPSpacing.large) {
                 topBar
                 SoftShowUpHomeChip()
                 if store.meals.isEmpty {
@@ -565,14 +547,14 @@ private struct TodayDashboard: View {
                 waterLog
                 advancedNutritionCard
                 Text("PandaPlate is a gentle wellness tracker, not medical advice.")
-                    .font(.system(size: 10, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    .font(PPType.caption2(10, weight: .medium))
                     .foregroundStyle(PPColor.muted)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 3)
-                    .padding(.bottom, 16)
+                    .padding(.top, PPSpacing.xSmall)
+                    .padding(.bottom, PPSpacing.large)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 13)
+            .padding(.horizontal, PPSpacing.pageInset)
+            .padding(.top, PPSpacing.tabContentTop)
         }
         .background(Color.clear)
         .sheet(isPresented: $showNutritionPaywall) {
@@ -581,28 +563,18 @@ private struct TodayDashboard: View {
     }
 
     private var homeCoachEmptyCard: some View {
-        PPCard(padding: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                PipMascot(size: 44)
-                    .accessibilityLabel("Pip, calm coach")
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Soft show-up")
-                        .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
-                        .foregroundStyle(PPColor.accentCoral)
-                    Text(PipCoachCopy.emptyHome(store: store))
-                        .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
-                        .foregroundStyle(PPColor.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
+        PPSoftEmptyCoach(
+            message: PipCoachCopy.emptyHome(store: store),
+            ctaTitle: "Log a plate",
+            ctaSymbol: "plus.circle.fill",
+            action: onLogPlate
+        )
     }
 
     private var todaysPlateStack: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: PPSpacing.medium) {
             Text(PipCoachCopy.historyPlatesHeader(count: store.meals.count))
-                .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
+                .font(PPType.caption(13, weight: .bold))
                 .foregroundStyle(PPColor.ink)
                 .accessibilityAddTraits(.isHeader)
             ForEach(store.meals.reversed()) { meal in
@@ -1117,7 +1089,7 @@ private struct ProfileView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: PPSpacing.large) {
                 header
 
                 youHeroCard
@@ -1155,8 +1127,9 @@ private struct ProfileView: View {
                     .multilineTextAlignment(.center)
                     .padding(.top, 4)
             }
-            .padding(18)
-            .padding(.bottom, 18)
+            .padding(.horizontal, PPSpacing.pageInset)
+            .padding(.top, PPSpacing.tabContentTop)
+            .padding(.bottom, PPSpacing.xLarge)
         }
         .background(PPColor.cream.ignoresSafeArea())
         .sheet(isPresented: $showPaywall) {
@@ -1180,10 +1153,10 @@ private struct ProfileView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("You")
-                    .font(.system(size: 28, weight: .black, design: .rounded, relativeTo: .largeTitle))
+                    .font(PPType.largeTitle(28, weight: .bold))
                     .foregroundStyle(PPColor.ink)
                 Text("Your space with Pip")
-                    .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
+                    .font(PPType.caption(13, weight: .medium))
                     .foregroundStyle(PPColor.muted)
             }
             Spacer()

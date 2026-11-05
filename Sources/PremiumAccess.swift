@@ -268,28 +268,28 @@ struct PremiumPaywallView: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // Hero
-                    VStack(spacing: 10) {
+                VStack(spacing: PPSpacing.large) {
+                    // Hero — shortened Wave 4 visual pass
+                    VStack(spacing: PPSpacing.small) {
                         Image("PP_PipWaveCheer")
                             .resizable()
                             .scaledToFit()
-                            .frame(maxWidth: 180, maxHeight: 200)
+                            .frame(maxWidth: 120, maxHeight: 132)
                             .accessibilityLabel("Pip, calm Premium coach")
 
-                        Text(isSoftPrompt ? "A little more\nwith Pip" : "PandaPlate\nPremium")
-                            .font(.ppDisplay(size: 36, relativeTo: .largeTitle))
-                            .foregroundStyle(Color.black)
+                        Text(isSoftPrompt ? "A little more with Pip" : "PandaPlate Premium")
+                            .font(PPType.title2(24, weight: .bold))
+                            .foregroundStyle(PPColor.ink)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Text(isSoftPrompt
                              ? "Optional — Free features remain available."
                              : "Unlimited scans + advanced nutrition when you want them. Free stays fully usable.")
-                            .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
+                            .font(PPType.callout(14, weight: .medium))
                             .foregroundStyle(PPColor.muted)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, PPSpacing.small)
                     }
                     .frame(maxWidth: .infinity)
 
@@ -303,15 +303,15 @@ struct PremiumPaywallView: View {
                     // Benefits
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Included with Premium")
-                            .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                            .font(PPType.body(15, weight: .bold))
                             .foregroundStyle(PPColor.ink)
                         ForEach(benefits, id: \.1) { item in
                             benefitRow(symbol: item.0, title: item.1, detail: item.2)
                         }
                     }
-                    .padding(16)
+                    .padding(PPSpacing.large)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .ppWarmCardChrome(cornerRadius: 20, elevated: true)
 
                     Text("Free includes manual logs, water, workouts, fasting, and 3 Food Scans per day with consent. Premium adds unlimited scans (when the scan server is connected), advanced nutrition snapshot, show-up history, CSV export, and Pip looks. Prices and renewal terms come from Apple before purchase. Restore purchases anytime.")
                         .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
@@ -337,7 +337,7 @@ struct PremiumPaywallView: View {
                         }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 56)
-                        .background(BitePalColor.ctaBlack, in: Capsule())
+                        .background(PPColor.accentCoral, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .disabled(premium.purchaseInFlight || premium.product(for: selectedPlan) == nil)
@@ -358,11 +358,12 @@ struct PremiumPaywallView: View {
                         Task { await premium.restorePurchases() }
                     } label: {
                         Text("Restore purchases")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded, relativeTo: .body))
-                            .foregroundStyle(PPColor.muted)
+                            .font(PPType.body(14, weight: .semibold))
+                            .foregroundStyle(PPColor.accentCoral)
                             .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityHint("Restores an existing Apple subscription if you already purchased Premium.")
 
                     if let err = premium.lastPurchaseError {
                         Text(err)
@@ -377,14 +378,7 @@ struct PremiumPaywallView: View {
                 }
                 .padding(20)
             }
-            .background(
-                LinearGradient(
-                    colors: [Color(red: 0.99, green: 0.97, blue: 0.94), Color.white],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
+            .background(PPColor.cream.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -434,11 +428,11 @@ struct PremiumPaywallView: View {
                     .font(.system(size: 20, weight: .black, design: .rounded, relativeTo: .title3))
                     .foregroundStyle(PPColor.ink)
             }
-            .padding(16)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(PPSpacing.large)
+            .ppWarmCardChrome(cornerRadius: 18, elevated: selected)
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(selected ? BitePalColor.ctaBlack : Color.black.opacity(0.08), lineWidth: selected ? 2.5 : 1)
+                    .stroke(selected ? PPColor.accentCoral : PPColor.line.opacity(0.75), lineWidth: selected ? 2 : 1)
             )
         }
         .buttonStyle(.plain)
@@ -458,7 +452,7 @@ struct PremiumPaywallView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(BitePalColor.selectGreen)
+                .foregroundStyle(PPColor.accentCoral)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
