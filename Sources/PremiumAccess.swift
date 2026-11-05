@@ -258,9 +258,10 @@ struct PremiumPaywallView: View {
     @State private var selectedPlan: PremiumPlanChoice = .yearly
 
     private let benefits: [(String, String, String)] = [
-        ("chart.xyaxis.line", "Session nutrition snapshot", "See logged meal calories and water; unknown values stay unknown."),
+        ("camera.fill", "Unlimited Food Scans", "Free keeps 3 live scans per day. Premium removes the daily Free cap when the scan server is connected."),
+        ("chart.xyaxis.line", "Advanced nutrition snapshot", "See logged meal calories and water; unknown values stay unknown — never zero."),
         ("leaf.fill", "Little World looks", "Unlock Scarf, Gardener, Chef, Nap, Cheer, and Explorer looks for Pip."),
-        ("calendar", "Show-up history", "See recent check-in days without a streak counter."),
+        ("calendar", "Show-up history", "See recent Soft Show-Up days. Quiet days are okay — no guilt meter."),
         ("square.and.arrow.up", "Session CSV export", "Export the current session’s entries as a CSV file."),
     ]
 
@@ -274,7 +275,7 @@ struct PremiumPaywallView: View {
                             .resizable()
                             .scaledToFit()
                             .frame(maxWidth: 180, maxHeight: 200)
-                            .accessibilityLabel("Pip cheering")
+                            .accessibilityLabel("Pip, calm Premium coach")
 
                         Text(isSoftPrompt ? "A little more\nwith Pip" : "PandaPlate\nPremium")
                             .font(.ppDisplay(size: 36, relativeTo: .largeTitle))
@@ -284,7 +285,7 @@ struct PremiumPaywallView: View {
 
                         Text(isSoftPrompt
                              ? "Optional — Free features remain available."
-                             : "Unlock extra Pip looks and session tools. Free features remain available.")
+                             : "Unlimited scans + advanced nutrition when you want them. Free stays fully usable.")
                             .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.muted)
                             .multilineTextAlignment(.center)
@@ -312,7 +313,7 @@ struct PremiumPaywallView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
-                    Text("Food scanning isn’t available in this version. Manual logs, water, workouts, and fasting remain available on Free.")
+                    Text("Free includes manual logs, water, workouts, fasting, and 3 Food Scans per day with consent. Premium adds unlimited scans (when the scan server is connected), advanced nutrition snapshot, show-up history, CSV export, and Pip looks. Prices and renewal terms come from Apple before purchase. Restore purchases anytime.")
                         .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
                         .foregroundStyle(PPColor.muted)
                         .multilineTextAlignment(.center)

@@ -125,7 +125,7 @@ struct PipMascot: View {
             .resizable()
             .scaledToFit()
             .frame(width: size, height: size)
-            .accessibilityLabel("Pip, the PandaPlate red panda")
+            .accessibilityLabel("Pip, the PandaPlate red panda coach")
     }
 }
 

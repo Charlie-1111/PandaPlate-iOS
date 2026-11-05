@@ -99,7 +99,7 @@ struct MainShellView: View {
             switch tab {
             case .home:
                 TodayDashboard(onSettingsTap: { activeSheet = .settings })
-                    .transition(.opacity.combined(with: .scale(scale: 0.99)))
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
             case .challenges:
                 ChallengesDashboard(
                     onMealTap: { openMealLog(.manual) },
@@ -107,7 +107,7 @@ struct MainShellView: View {
                     onWorkoutTap: { activeSheet = .workout }
                 )
                 .environmentObject(store)
-                .transition(.opacity.combined(with: .scale(scale: 0.99)))
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
             case .stats:
                 ProgressDashboard(
                     showingHistory: statsShowsHistory,
@@ -115,7 +115,7 @@ struct MainShellView: View {
                 )
                 .id(statsShowsHistory)
                 .environmentObject(store)
-                .transition(.opacity.combined(with: .scale(scale: 0.99)))
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -357,6 +357,76 @@ private struct PPQuickActionsPressStyle: ButtonStyle {
     }
 }
 
+struct PlateStoryCard: View {
+    let meal: MealEntry
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            plateThumb
+            VStack(alignment: .leading, spacing: 4) {
+                Text(meal.name)
+                    .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .lineLimit(2)
+                if let story = meal.plateStory, !story.isEmpty {
+                    Text(story)
+                        .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
+                        .foregroundStyle(PPColor.muted)
+                        .lineLimit(2)
+                }
+                HStack(spacing: 8) {
+                    Text(meal.time.formatted(date: .omitted, time: .shortened))
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.muted)
+                    Text(meal.calories.map { "\($0) kcal" } ?? "kcal unknown")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.accentCoral)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PPColor.line.opacity(0.8), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessLabel)
+    }
+
+    @ViewBuilder
+    private var plateThumb: some View {
+        Group {
+            if let data = meal.imageData, let ui = UIImage(data: data) {
+                Image(uiImage: ui)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    PPColor.cream
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(PPColor.forest)
+                }
+            }
+        }
+        .frame(width: 56, height: 56)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityHidden(true)
+    }
+
+    private var accessLabel: String {
+        var parts = [meal.name]
+        if let story = meal.plateStory, !story.isEmpty { parts.append(story) }
+        parts.append(meal.calories.map { "\($0) kilocalories" } ?? "calories unknown")
+        parts.append(meal.time.formatted(date: .omitted, time: .shortened))
+        return parts.joined(separator: ", ")
+    }
+}
+
 private struct ChallengesDashboard: View {
     @EnvironmentObject private var store: AppStore
     let onMealTap: () -> Void
@@ -490,6 +560,11 @@ private struct TodayDashboard: View {
             VStack(alignment: .leading, spacing: 17) {
                 topBar
                 SoftShowUpHomeChip()
+                if store.meals.isEmpty {
+                    homeCoachEmptyCard
+                } else {
+                    todaysPlateStack
+                }
                 PipWorldDashboard()
                     .environmentObject(store)
                 sessionSummary
@@ -508,6 +583,37 @@ private struct TodayDashboard: View {
         .background(Color.clear)
         .sheet(isPresented: $showNutritionPaywall) {
             PremiumPaywallView(isSoftPrompt: true)
+        }
+    }
+
+    private var homeCoachEmptyCard: some View {
+        PPCard(padding: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                PipMascot(size: 44)
+                    .accessibilityLabel("Pip, calm coach")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Soft show-up")
+                        .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
+                        .foregroundStyle(PPColor.accentCoral)
+                    Text(PipCoachCopy.emptyHome(store: store))
+                        .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
+                        .foregroundStyle(PPColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var todaysPlateStack: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(PipCoachCopy.historyPlatesHeader(count: store.meals.count))
+                .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
+                .foregroundStyle(PPColor.ink)
+                .accessibilityAddTraits(.isHeader)
+            ForEach(store.meals.reversed()) { meal in
+                PlateStoryCard(meal: meal)
+            }
         }
     }
 
@@ -1022,6 +1128,8 @@ private struct ProfileView: View {
 
                 youHeroCard
 
+                localFirstCard
+
                 premiumCard
 
                 softShowUpCard
@@ -1113,10 +1221,28 @@ private struct ProfileView: View {
                         .foregroundStyle(PPColor.muted)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "heart.circle.fill")
+                Image(systemName: "leaf.circle.fill")
                     .font(.system(size: 36))
-                    .foregroundStyle(PPColor.coral)
+                    .foregroundStyle(PPColor.forest)
                     .accessibilityHidden(true)
+            }
+        }
+    }
+
+    private var localFirstCard: some View {
+        PPCard(padding: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("On this device")
+                    .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .body))
+                    .foregroundStyle(PPColor.ink)
+                Text(PipCoachCopy.offlineProfileBlurb(store: store))
+                    .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(quota.quotaSummaryLine)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                    .foregroundStyle(PPColor.accentCoral)
+                    .accessibilityLabel(quota.quotaSummaryLine)
             }
         }
     }

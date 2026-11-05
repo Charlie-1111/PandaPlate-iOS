@@ -62,7 +62,7 @@ struct ProgressDashboard: View {
                         .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
                         .foregroundStyle(isSelected ? .white : PPColor.ink)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(isSelected ? PPColor.forestDeep : PPColor.card, in: Capsule())
+                        .background(isSelected ? PPColor.accentCoral : PPColor.card, in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(section.rawValue)
@@ -98,11 +98,11 @@ struct ProgressDashboard: View {
 
             LazyVGrid(columns: gridColumns, spacing: 10) {
                 recapTile(
-                    title: "Meals",
+                    title: "Plates logged",
                     value: "\(store.meals.count)",
                     footnote: store.meals.isEmpty ? "None yet" : "\(mealsWithCalories) with estimate · \(mealsWithoutCalories) unknown",
                     symbol: "fork.knife",
-                    tint: PPColor.forest
+                    tint: PPColor.accentCoral
                 )
                 recapTile(
                     title: "Water",
@@ -181,6 +181,14 @@ struct ProgressDashboard: View {
 
     private var statsEmptyState: some View {
         VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                PipMascot(size: 40)
+                    .accessibilityLabel("Pip, calm coach")
+                Text(PipCoachCopy.emptyHome(store: store))
+                    .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Text("Nothing logged yet this session.")
                 .font(.system(size: 15, weight: .semibold, design: .rounded, relativeTo: .body))
                 .foregroundStyle(PPColor.ink)
@@ -192,7 +200,7 @@ struct ProgressDashboard: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(PPColor.forestDeep, in: Capsule())
+                    .background(PPColor.accentCoral, in: Capsule())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("stats-empty-open-quick-log")
@@ -273,6 +281,16 @@ struct ProgressDashboard: View {
             Text("Session history · newest first · clears when the app closes")
                 .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
                 .foregroundStyle(PPColor.muted)
+
+            if !store.meals.isEmpty {
+                Text(PipCoachCopy.historyPlatesHeader(count: store.meals.count))
+                    .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(store.meals.reversed()) { meal in
+                    PlateStoryCard(meal: meal)
+                }
+            }
 
             PPCard {
                 SoftShowUpPresenceCard(

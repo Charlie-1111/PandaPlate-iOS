@@ -39,10 +39,13 @@ struct SoftShowUpHomeChip: View {
     }
 
     private var accessibilityLine: String {
+        let base: String
         if store.isSeenToday {
-            return "\(store.homeChipLine). \(SoftShowUpCopy.homeChipPipNod)"
+            base = "\(store.homeChipLine). \(SoftShowUpCopy.homeChipPipNod)"
+        } else {
+            base = store.homeChipLine
         }
-        return store.homeChipLine
+        return "Soft Show-Up. \(base)"
     }
 }
 
@@ -59,6 +62,8 @@ struct SoftShowUpPresenceCard: View {
                 .font(.system(size: 9, weight: .heavy, design: .rounded, relativeTo: .caption2))
                 .tracking(1)
                 .foregroundStyle(PPColor.muted)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel(SoftShowUpCopy.title)
 
             Text(SoftShowUpCopy.countLabel)
                 .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
