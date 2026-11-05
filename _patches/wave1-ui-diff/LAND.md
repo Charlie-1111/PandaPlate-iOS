@@ -3,7 +3,7 @@
 **Branch:** `wave1-ui-diff`  
 **Base (before):** `ccf19dd` — Respect Reduce Motion for main tab switches  
 **Wave 1 tip:** `7054731`  
-**Waves 2–3 tip:** (see commit after this LAND refresh)  
+**Waves 2–3 tip:** `fa7842e`  
 **Remote:** `origin/wave1-ui-diff`  
 **PR draft URL:** https://github.com/Charlie-1111/PandaPlate-iOS/pull/new/wave1-ui-diff  
 
