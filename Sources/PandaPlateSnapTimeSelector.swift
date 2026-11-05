@@ -51,7 +51,7 @@ struct PandaPlateSnapTimeSelector: View {
                 if let selectedTimeText {
                     Text(selectedTimeText)
                         .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
-                        .foregroundStyle(PPColor.forestDeep)
+                        .foregroundStyle(PPColor.accentCoral)
                         .accessibilityLabel("Selected time, \(selectedTimeText)")
                 }
             }
@@ -74,14 +74,14 @@ struct PandaPlateSnapTimeSelector: View {
             HStack(spacing: 8) {
                 Text(selectionStatus)
                     .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
-                    .foregroundStyle(selectedTimeText == nil ? PPColor.muted : PPColor.forestDeep)
+                    .foregroundStyle(selectedTimeText == nil ? PPColor.muted : PPColor.accentCoral)
                     .accessibilityLabel(selectionStatus)
                 Spacer(minLength: 8)
                 Button("Clear") {
                     clearSelection()
                 }
                 .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                .foregroundStyle(PPColor.forestDeep)
+                .foregroundStyle(PPColor.accentCoral)
                 .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
                 .disabled(time.isEmpty && selectedHour == nil && selectedPeriod == nil && directHourText.isEmpty)
@@ -168,10 +168,10 @@ struct PandaPlateSnapTimeSelector: View {
                 .font(.system(size: 20, weight: .bold, design: .rounded, relativeTo: .title3))
                 .foregroundStyle(selected ? .white : PPColor.ink)
                 .frame(width: 58, height: 56)
-                .background(selected ? PPColor.forestDeep : PPColor.cream, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(selected ? PPColor.accentCoral : PPColor.cream, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(selected ? PPColor.forestDeep : PPColor.line, lineWidth: selected ? 2 : 1)
+                        .stroke(selected ? PPColor.accentCoral : PPColor.line, lineWidth: selected ? 2 : 1)
                 }
                 .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
@@ -199,8 +199,8 @@ struct PandaPlateSnapTimeSelector: View {
             }
             .foregroundStyle(selected ? .white : PPColor.ink)
             .frame(maxWidth: .infinity, minHeight: 52)
-            .background(selected ? PPColor.forestDeep : PPColor.cream, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(selected ? PPColor.forestDeep : PPColor.line.opacity(0.8), lineWidth: selected ? 1.5 : 1))
+            .background(selected ? PPColor.accentCoral : PPColor.cream, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(selected ? PPColor.accentCoral : PPColor.line.opacity(0.8), lineWidth: selected ? 1.5 : 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -248,7 +248,7 @@ struct PandaPlateSnapTimeSelector: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
                 .frame(minHeight: 48)
-                .background(PPColor.forestDeep, in: Capsule())
+                .background(PPColor.accentCoral, in: Capsule())
                 .buttonStyle(.plain)
                 .disabled(directEntryHour == nil)
                 .opacity(directEntryHour == nil ? 0.45 : 1)

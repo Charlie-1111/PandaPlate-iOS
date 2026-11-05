@@ -60,44 +60,53 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         XCTAssertTrue(pipNameHeading.waitForExistence(timeout: 5))
     }
 
-    func testHomeChallengesStatsAndLauncherExposeAccessibleNavigation() {
+    func testHomePipProgressProfileAndLauncherExposeAccessibleNavigation() {
         let app = XCUIApplication()
         launchIntoHome(app)
 
         let home = app.buttons["Home"]
-        let challenges = app.buttons["Challenges"]
-        let stats = app.buttons["Stats"]
+        let pip = app.buttons["Pip"]
+        let progress = app.buttons["Progress"]
+        let profile = app.buttons["Profile"]
         XCTAssertTrue(home.waitForExistence(timeout: 5))
-        XCTAssertTrue(challenges.waitForExistence(timeout: 5))
-        XCTAssertTrue(stats.waitForExistence(timeout: 5))
+        XCTAssertTrue(pip.waitForExistence(timeout: 5))
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertTrue(profile.waitForExistence(timeout: 5))
         let launcher = app.buttons["Quick actions"]
         XCTAssertTrue(launcher.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Progress"].exists)
-        XCTAssertFalse(app.buttons["You"].exists)
+        XCTAssertFalse(app.buttons["Challenges"].exists)
+        XCTAssertFalse(app.buttons["Stats"].exists)
         XCTAssertGreaterThanOrEqual(home.frame.height, 44)
-        XCTAssertGreaterThanOrEqual(challenges.frame.height, 44)
-        XCTAssertGreaterThanOrEqual(stats.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(pip.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(progress.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(profile.frame.height, 44)
         XCTAssertGreaterThanOrEqual(launcher.frame.width, 64)
         XCTAssertEqual(home.value as? String, "Selected")
         XCTAssertTrue(home.isSelected)
-        XCTAssertEqual(challenges.value as? String, "Not selected")
-        XCTAssertEqual(stats.value as? String, "Not selected")
+        XCTAssertEqual(pip.value as? String, "Not selected")
+        XCTAssertEqual(progress.value as? String, "Not selected")
+        XCTAssertEqual(profile.value as? String, "Not selected")
         let homeCapture = XCTAttachment(screenshot: app.screenshot())
         homeCapture.name = "PandaPlate Home · new navigation pill"
         homeCapture.lifetime = .keepAlways
         add(homeCapture)
 
-        challenges.tap()
-        XCTAssertEqual(challenges.value as? String, "Selected")
-        XCTAssertTrue(challenges.isSelected)
+        pip.tap()
+        XCTAssertEqual(pip.value as? String, "Selected")
+        XCTAssertTrue(pip.isSelected)
         XCTAssertTrue(launcher.exists)
-        XCTAssertTrue(app.staticTexts["Challenges"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Pip"].waitForExistence(timeout: 5))
 
-        stats.tap()
-        XCTAssertEqual(stats.value as? String, "Selected")
-        XCTAssertTrue(stats.isSelected)
+        progress.tap()
+        XCTAssertEqual(progress.value as? String, "Selected")
+        XCTAssertTrue(progress.isSelected)
         XCTAssertTrue(launcher.exists)
-        XCTAssertTrue(app.staticTexts["Stats"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Progress"].waitForExistence(timeout: 5))
+
+        profile.tap()
+        XCTAssertEqual(profile.value as? String, "Selected")
+        XCTAssertTrue(profile.isSelected)
+        XCTAssertTrue(app.staticTexts["You"].waitForExistence(timeout: 5))
 
         launcher.tap()
         XCTAssertTrue(app.staticTexts["What would you like to add?"].waitForExistence(timeout: 5))
@@ -128,7 +137,7 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         let app = XCUIApplication()
         launchIntoHome(app)
 
-        app.buttons["Stats"].tap()
+        app.buttons["Progress"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["stats-session-so-far"].waitForExistence(timeout: 5))
 
         let openQuickLog = app.buttons["stats-empty-open-quick-log"]
@@ -141,7 +150,7 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         app.buttons["Close"].tap()
 
         let statsCapture = XCTAttachment(screenshot: app.screenshot())
-        statsCapture.name = "PandaPlate Stats · session recap empty"
+        statsCapture.name = "PandaPlate Progress · session recap empty"
         statsCapture.lifetime = .keepAlways
         add(statsCapture)
     }
@@ -248,7 +257,7 @@ final class PandaPlateRevisionUIAccessibilityTests: XCTestCase {
         ).firstMatch.waitForExistence(timeout: 5))
 
         app.buttons["Home"].tap()
-        app.buttons["Stats"].tap()
+        app.buttons["Progress"].tap()
         let history = app.buttons["History"]
         XCTAssertTrue(history.waitForExistence(timeout: 5))
         history.tap()

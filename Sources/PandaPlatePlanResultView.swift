@@ -82,7 +82,7 @@ struct PandaPlatePlanResultView: View {
                     .font(PPType.body(16, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: 680, minHeight: 54)
-                    .background(PPColor.forestDeep, in: Capsule())
+                    .background(PPColor.accentCoral, in: Capsule())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("planResultFinish")

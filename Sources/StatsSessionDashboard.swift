@@ -37,7 +37,7 @@ struct ProgressDashboard: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 17) {
-                Text("Stats")
+                Text("Progress")
                     .font(.system(size: 27, weight: .black, design: .rounded, relativeTo: .largeTitle))
                     .foregroundStyle(PPColor.ink)
                 sectionPicker

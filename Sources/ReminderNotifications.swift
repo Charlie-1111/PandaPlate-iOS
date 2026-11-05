@@ -10,6 +10,7 @@ enum ReminderNotifications {
     static let idMealFirst = "pandaplate.reminder.meal.first"
     static let idMealMidday = "pandaplate.reminder.meal.midday"
     static let idMealEvening = "pandaplate.reminder.meal.evening"
+    /// Legacy ID kept only so cancelAll clears old hungry schedules; never re-scheduled.
     static let idPipHungry = "pandaplate.reminder.pip.hungry"
 
     static var allIdentifiers: [String] {
@@ -107,14 +108,8 @@ enum ReminderNotifications {
                     body: "Optional reminder to log dinner with \(pet) nearby."
                 )
             }
-        case "When Pip is hungry":
-            await addDaily(
-                id: idPipHungry,
-                hour: 15,
-                minute: 0,
-                title: "\(pet) is a little hungry",
-                body: "\(pet) peeked over — a soft nudge to check in or log something when you like."
-            )
+        // "When Pip is hungry" removed (Plate Guard): never schedule hungry/sad Pip guilt.
+        // idPipHungry remains in allIdentifiers so cancelAll clears any leftover requests.
         default:
             break
         }

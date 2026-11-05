@@ -431,7 +431,7 @@ struct OnboardingFlowView: View {
                 .foregroundStyle(PPColor.muted)
             PipReactionBeat(assetNames: ["PP_PipRest", "PP_PipGentle"], label: "Pip waits quietly", size: 76)
                 .frame(maxWidth: .infinity)
-            ForEach(["In the morning", "Before each meal", "When Pip is hungry"], id: \.self) { choice in
+            ForEach(["In the morning", "Before each meal"], id: \.self) { choice in
                 ChoiceRow(title: choice, subtitle: "Preference only; notifications are unavailable.", symbol: "bell", isSelected: selectedReminder == choice) {
                     selectedReminder = choice
                 }

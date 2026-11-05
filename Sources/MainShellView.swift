@@ -5,7 +5,7 @@ import StoreKit
 import UIKit
 
 private enum RootTab: Hashable {
-    case home, challenges, stats
+    case home, pip, progress, profile
 }
 
 private enum MealLogMode: Equatable {
@@ -98,9 +98,9 @@ struct MainShellView: View {
         Group {
             switch tab {
             case .home:
-                TodayDashboard(onSettingsTap: { activeSheet = .settings })
+                TodayDashboard(onSettingsTap: { tab = .profile })
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
-            case .challenges:
+            case .pip:
                 ChallengesDashboard(
                     onMealTap: { openMealLog(.manual) },
                     onWaterTap: { activeSheet = .water },
@@ -108,7 +108,7 @@ struct MainShellView: View {
                 )
                 .environmentObject(store)
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
-            case .stats:
+            case .progress:
                 ProgressDashboard(
                     showingHistory: statsShowsHistory,
                     onOpenQuickLog: { activeSheet = .quickLog }
@@ -116,6 +116,10 @@ struct MainShellView: View {
                 .id(statsShowsHistory)
                 .environmentObject(store)
                 .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
+            case .profile:
+                ProfileView(isPresentedAsSheet: false)
+                    .environmentObject(store)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.99)))
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -206,7 +210,7 @@ struct MainShellView: View {
                 WorkoutPickerLogView(workouts: $store.workouts, onFinish: {
                     activeSheet = nil
                     statsShowsHistory = true
-                    tab = .stats
+                    tab = .progress
                 })
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
@@ -214,7 +218,7 @@ struct MainShellView: View {
                 FastingLogView(onFinish: {
                     activeSheet = nil
                     statsShowsHistory = true
-                    tab = .stats
+                    tab = .progress
                 })
                     .environmentObject(store)
                     .presentationDetents([.large])
@@ -256,30 +260,16 @@ struct MainShellView: View {
 
     private var bottomBar: some View {
         GeometryReader { proxy in
-            let horizontalInset: CGFloat = 16
-            let plusSize: CGFloat = 68
-            let gap: CGFloat = 12
-            let availablePillWidth = max(0, proxy.size.width - (horizontalInset * 2) - plusSize - gap)
-            let pillWidth = min(256, availablePillWidth)
+            let horizontalInset: CGFloat = 10
+            let plusSize: CGFloat = 62
 
-            HStack(spacing: gap) {
-                HStack(spacing: 2) {
-                    tabButton(.home, title: "Home", symbol: "house.fill")
-                    tabButton(.challenges, title: "Challenges", symbol: "star.fill")
-                    tabButton(.stats, title: "Stats", symbol: "chart.bar.fill")
-                }
-                .padding(4)
-                .frame(width: pillWidth)
-                .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? 84 : 64)
-                .background(PPColor.card, in: Capsule())
-                .overlay(Capsule().stroke(PPColor.line, lineWidth: 1))
-                .shadow(color: PPColor.ink.opacity(0.08), radius: 9, y: 3)
-
-                Spacer(minLength: 0)
+            HStack(spacing: 4) {
+                tabButton(.home, title: "Home", symbol: "house.fill")
+                tabButton(.pip, title: "Pip", symbol: "pawprint.fill")
 
                 Button { activeSheet = .quickLog } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 27, weight: .bold))
+                        .font(.system(size: 25, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(width: plusSize, height: plusSize)
                         .background(PPColor.accentCoral, in: Circle())
@@ -290,6 +280,10 @@ struct MainShellView: View {
                 .accessibilityLabel("Quick actions")
                 .accessibilityHint("Opens meal, water, workout, weight and fasting actions")
                 .buttonStyle(PPQuickActionsPressStyle())
+                .padding(.horizontal, 2)
+
+                tabButton(.progress, title: "Progress", symbol: "chart.bar.fill")
+                tabButton(.profile, title: "Profile", symbol: "person.fill")
             }
             .padding(.horizontal, horizontalInset)
             .padding(.top, 8)
@@ -307,7 +301,7 @@ struct MainShellView: View {
         let selected = tab == item
         return Button {
             let selectTab = {
-                if item == .stats { statsShowsHistory = false }
+                if item == .progress { statsShowsHistory = false }
                 tab = item
             }
             if reduceMotion {
@@ -436,10 +430,10 @@ private struct ChallengesDashboard: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Challenges")
+                Text("Pip")
                     .font(.system(size: 27, weight: .black, design: .rounded, relativeTo: .largeTitle))
                     .foregroundStyle(PPColor.ink)
-                Text("Three small choices from PandaPlate. Progress follows your actual logs, at your pace.")
+                Text("Pip’s Little World — three small choices. Progress follows your actual logs, at your pace.")
                     .font(.system(size: 14, weight: .medium, design: .rounded, relativeTo: .body))
                     .foregroundStyle(PPColor.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -786,7 +780,7 @@ private struct TodayDashboard: View {
         VStack(spacing: 12) {
             Image(systemName: "lock.fill")
                 .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(PPColor.forestDeep)
+                .foregroundStyle(PPColor.accentCoral)
             Text("Session nutrition snapshot")
                 .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .body))
                 .foregroundStyle(PPColor.ink)
@@ -802,7 +796,7 @@ private struct TodayDashboard: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(PPColor.forestDeep, in: Capsule())
+                    .background(PPColor.accentCoral, in: Capsule())
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
@@ -1647,6 +1641,7 @@ private struct LogMealSheet: View {
     private let initialMode: MealLogMode
     @State private var mealName = "Lunch"
     @State private var foodDescription = ""
+    @State private var plateStory = ""
     @State private var calories = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var imageData: Data?
@@ -1732,6 +1727,13 @@ private struct LogMealSheet: View {
                             .foregroundStyle(PPColor.coralInk)
                     }
                 }
+                Section("Plate Story") {
+                    TextField(PipCoachCopy.plateStoryPlaceholder(store: store), text: $plateStory)
+                        .accessibilityLabel("Plate Story optional note")
+                    Text("Optional one-line note for the Home plate stack. Not an award.")
+                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                        .foregroundStyle(PPColor.muted)
+                }
                 Section("Photo note · this session only") {
                     PhotosPicker(selection: $selectedPhoto, matching: .images, photoLibrary: .shared()) {
                         Label(imageData == nil ? "Choose a photo" : "Change photo", systemImage: "photo")
@@ -1781,7 +1783,7 @@ private struct LogMealSheet: View {
                     Button("Save") {
                         let description = foodDescription.trimmingCharacters(in: .whitespacesAndNewlines)
                         let name = description.isEmpty ? mealName : "\(mealName) · \(description)"
-                        store.addMeal(name: name, calories: calories.isEmpty ? nil : parsedCalories, imageData: imageData)
+                        store.addMeal(name: name, calories: calories.isEmpty ? nil : parsedCalories, imageData: imageData, plateStory: plateStory)
                         dismiss()
                     }
                     .fontWeight(.bold)
@@ -1888,11 +1890,11 @@ private struct QuickLogSheet: View {
             ActionTile(id: "food", title: "Food", subtitle: "Camera → log", symbol: "camera.fill",
                        tint: PPColor.forest, fill: PPColor.sage),
             ActionTile(id: "manual-food", title: "Manual food", subtitle: "Add without a photo", symbol: "square.and.pencil",
-                       tint: PPColor.forestDeep, fill: PPColor.selectedWash),
+                       tint: PPColor.accentCoral, fill: PPColor.selectedWash),
             ActionTile(id: "water", title: "Water", subtitle: "Add a glass", symbol: "drop.fill",
                        tint: PPColor.forest, fill: PPColor.softBlue),
             ActionTile(id: "recent-meals", title: "Recent meals", subtitle: "Copy & review", symbol: "arrow.clockwise",
-                       tint: PPColor.forestDeep, fill: PPColor.sage),
+                       tint: PPColor.accentCoral, fill: PPColor.sage),
             ActionTile(id: "workout", title: "Workout", subtitle: "Log activity", symbol: "figure.walk",
                        tint: PPColor.forest, fill: PPColor.cream),
             ActionTile(id: "weight", title: "Weight", subtitle: "Check in", symbol: "scalemass.fill",
