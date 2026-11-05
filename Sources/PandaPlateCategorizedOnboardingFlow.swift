@@ -2310,7 +2310,14 @@ struct PandaPlateCategorizedOnboardingFlow: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(PPColor.coralInk)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Signed in with Apple")
+                        #if DEBUG
+                        let signedInTitle = draft.appleUserIdentifier == PandaPlateDebugDeveloperSignIn.userID
+                            ? "Developer session (Debug)"
+                            : "Signed in with Apple"
+                        #else
+                        let signedInTitle = "Signed in with Apple"
+                        #endif
+                        Text(signedInTitle)
                             .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
                             .foregroundStyle(PPColor.ink)
                         if let email = draft.appleEmail, !email.isEmpty {

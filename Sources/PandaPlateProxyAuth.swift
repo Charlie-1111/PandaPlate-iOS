@@ -400,6 +400,22 @@ final class PandaPlateProxySignInCoordinator: NSObject, ObservableObject,
         return active?.windows.first(where: \.isKeyWindow) ?? active?.windows.first
     }
 
+    #if DEBUG
+    /// Local Simulator / Debug bypass — no Apple ID, no proxy session token.
+    /// Unlocks the same onboarding completion path as SIWA via `onAuthenticated`.
+    /// Must stay inside `#if DEBUG` so Release / Archive binaries strip UI + entry.
+    func continueAsDeveloper() {
+        guard busyProvider == nil else { return }
+        errorMessage = nil
+        onAuthenticated(
+            PandaPlateProxyIdentity(
+                provider: .apple,
+                userID: PandaPlateDebugDeveloperSignIn.userID,
+                email: PandaPlateDebugDeveloperSignIn.email
+            )
+        )
+    }
+    #endif
 }
 
 struct PandaPlateProxySignInButtons: View {
@@ -441,6 +457,33 @@ struct PandaPlateProxySignInButtons: View {
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier("proxySignInError")
             }
+
+            #if DEBUG
+            // Compile-time Debug-only. Release / App Store archive cannot show this control.
+            Button(action: coordinator.continueAsDeveloper) {
+                Text("Continue as Developer")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(PPColor.peach.opacity(0.55), in: Capsule())
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(PPColor.coralInk.opacity(0.35), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(coordinator.busyProvider != nil)
+            .accessibilityLabel("Continue as Developer")
+            .accessibilityHint("Debug builds only. Skips Sign in with Apple on Simulator.")
+            .accessibilityIdentifier("proxySignInContinueAsDeveloper")
+
+            Text("Debug only — no Apple ID. Local session for Simulator; not in Release.")
+                .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                .foregroundStyle(PPColor.muted)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("proxySignInDeveloperHint")
+            #endif
         }
     }
 }
@@ -462,3 +505,13 @@ private struct NonceRequest: Encodable {
 private struct ProxyErrorResponse: Decodable {
     let error: String?
 }
+
+#if DEBUG
+/// Stable local identity used by Debug “Continue as Developer”.
+/// Entire type is `#if DEBUG` so Release / Archive cannot reference or embed it.
+enum PandaPlateDebugDeveloperSignIn {
+    static let userID = "pandaplate.debug.developer"
+    static let email = "developer@localhost"
+}
+#endif
+
