@@ -9,7 +9,14 @@ enum SoftShowUpCopy {
     static let countOne = "Pip saw you today"
     static func countMany(_ n: Int) -> String { "Pip saw you \(n) days" }
     static let emptyDay0 = "Say hi to Pip — tomorrow you'll have a day to protect"
-    static let footer = "Soft presence — not a streak"
+    static let footer = "Soft presence — quiet days are okay"
+
+    // Home chip (Wave 1) — calm “showed up” language; never hungry/sad Pip.
+    static let homeChipEmpty = "Showed up 0 days"
+    static func homeChip(_ n: Int) -> String {
+        n <= 0 ? homeChipEmpty : (n == 1 ? "Showed up 1 day" : "Showed up \(n) days")
+    }
+    static let homeChipPipNod = "Pip nodded"
 
     static let napTitle = "Pip's napping"
     static let napBody = "No rush. Come back when you're ready — Pip will be here."

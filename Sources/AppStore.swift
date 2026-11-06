@@ -62,6 +62,16 @@ struct MealEntry: Identifiable {
     let calories: Int?
     let time: Date
     let imageData: Data?
+    /// Optional one-line Plate Story (Wave 2). Never an award badge.
+    let plateStory: String?
+
+    init(name: String, calories: Int?, time: Date, imageData: Data?, plateStory: String? = nil) {
+        self.name = name
+        self.calories = calories
+        self.time = time
+        self.imageData = imageData
+        self.plateStory = plateStory
+    }
 }
 
 struct WorkoutEntry: Identifiable {
@@ -145,11 +155,17 @@ final class AppStore: ObservableObject {
         }
     }
 
-    func addMeal(name: String, calories: Int?, imageData: Data?) {
+    func addMeal(name: String, calories: Int?, imageData: Data?, plateStory: String? = nil) {
         guard meals.count < Self.maximumMealsPerSession else { return }
         let boundedCalories = calories.flatMap { (0...10_000).contains($0) ? $0 : nil }
         let boundedImage = imageData.flatMap { $0.count <= 1_000_000 ? $0 : nil }
-        meals.append(MealEntry(name: name, calories: boundedCalories, time: Date(), imageData: boundedImage))
+        let story = plateStory?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let boundedStory: String? = {
+            guard let story, !story.isEmpty else { return nil }
+            return String(story.prefix(120))
+        }()
+        meals.append(MealEntry(name: name, calories: boundedCalories, time: Date(), imageData: boundedImage, plateStory: boundedStory))
         SoftShowUpStore.shared.markSeen()
         // Soft wall + review milestone: first honest food log confirmed.
         FirstSuccessMoments.shared.noteFirstFoodLogConfirmed()
@@ -171,6 +187,9 @@ final class AppStore: ObservableObject {
         previousWaterServingsML = waterServingsML
         canUndoWaterChange = true
         waterServingsML = updated
+        if amountML != nil {
+            SoftShowUpStore.shared.markSeen()
+        }
         return true
     }
 
@@ -201,6 +220,7 @@ final class AppStore: ObservableObject {
               (1...WorkoutFeatureRules.maximumCustomDuration).contains(durationMinutes),
               workouts.count < WorkoutFeatureRules.maximumSessionEntries else { return false }
         workouts.append(WorkoutEntry(activity: trimmed, durationMinutes: durationMinutes, time: time, activeEnergyKcal: kcal))
+        SoftShowUpStore.shared.markSeen()
         return true
     }
 

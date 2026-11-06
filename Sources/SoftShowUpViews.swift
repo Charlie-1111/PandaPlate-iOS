@@ -3,6 +3,49 @@
 
 import SwiftUI
 
+
+/// Compact Home chip — “Showed up N days” with a calm Pip nod. Never hungry/sad / heart meter.
+struct SoftShowUpHomeChip: View {
+    @ObservedObject var store: SoftShowUpStore = .shared
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: PPSpacing.small) {
+            PipMascot(size: 28)
+                .accessibilityHidden(true)
+                .scaleEffect(store.isSeenToday && !reduceMotion ? 1.0 : 1.0)
+            VStack(alignment: .leading, spacing: PPSpacing.xSmall) {
+                Text(store.homeChipLine)
+                    .font(PPType.chip(14, weight: .bold))
+                    .foregroundStyle(PPColor.ink)
+                    .contentTransition(reduceMotion ? .identity : .opacity)
+                if store.isSeenToday {
+                    Text(SoftShowUpCopy.homeChipPipNod)
+                        .font(PPType.caption2(11, weight: .medium))
+                        .foregroundStyle(PPColor.accentCoral)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, PPSpacing.medium)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ppWarmCardChrome(cornerRadius: 16, elevated: true)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLine)
+    }
+
+    private var accessibilityLine: String {
+        let base: String
+        if store.isSeenToday {
+            base = "\(store.homeChipLine). \(SoftShowUpCopy.homeChipPipNod)"
+        } else {
+            base = store.homeChipLine
+        }
+        return "Soft Show-Up. \(base)"
+    }
+}
+
 /// Compact presence card — Progress History / Profile.
 struct SoftShowUpPresenceCard: View {
     @ObservedObject var store: SoftShowUpStore = .shared
@@ -13,16 +56,18 @@ struct SoftShowUpPresenceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(SoftShowUpCopy.title.uppercased())
-                .font(.system(size: 9, weight: .heavy, design: .rounded, relativeTo: .caption2))
+                .font(PPType.caption2(9, weight: .heavy))
                 .tracking(1)
                 .foregroundStyle(PPColor.muted)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityLabel(SoftShowUpCopy.title)
 
             Text(SoftShowUpCopy.countLabel)
-                .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
+                .font(PPType.caption(13, weight: .bold))
                 .foregroundStyle(PPColor.ink)
 
             Text(store.countHeadline)
-                .font(.system(size: 20, weight: .black, design: .rounded, relativeTo: .title3))
+                .font(PPType.title2(20, weight: .bold))
                 .foregroundStyle(PPColor.ink)
                 .fixedSize(horizontal: false, vertical: true)
 

@@ -38,6 +38,7 @@ struct FoodScanSheet: View {
     @State private var showCelebrate = false
     @State private var celebrateScale: CGFloat = 0.86
     @State private var celebrateOpacity: Double = 0
+    @State private var plateStory = ""
 
     private let mealTypes = ["Breakfast", "Lunch", "Dinner", "Snack"]
 
@@ -89,6 +90,7 @@ struct FoodScanSheet: View {
                         mealType: $mealType,
                         mealTypes: mealTypes,
                         caloriesText: $editCalories,
+                        plateStory: $plateStory,
                         caloriesAreValid: caloriesAreValid,
                         hasServerNutrition: hasServerNutrition,
                         nutritionSource: resultCandidate?.nutritionSource,
@@ -201,9 +203,17 @@ struct FoodScanSheet: View {
                 .accessibilityLabel("Close")
 
                 Spacer()
-                Text("Snap your meal")
-                    .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
-                    .foregroundStyle(PPColor.ink)
+                VStack(spacing: 2) {
+                    Text("Snap your meal")
+                        .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
+                        .foregroundStyle(PPColor.ink)
+                    if let chip = quota.freeScansRemainingChip(isPremium: premium.isPremium) {
+                        Text(chip)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded, relativeTo: .caption))
+                            .foregroundStyle(PPColor.accentCoral)
+                            .accessibilityLabel("Free scans remaining, \(chip)")
+                    }
+                }
                 Spacer()
                 Color.clear.frame(width: 40, height: 40)
             }
@@ -267,6 +277,16 @@ struct FoodScanSheet: View {
                 Text("Before we look at your plate")
                     .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
                     .foregroundStyle(PPColor.ink)
+                Text(PipCoachCopy.firstScanConsent(store: store))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.accentCoral)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let chip = quota.freeScansRemainingChip(isPremium: premium.isPremium) {
+                    Text(chip)
+                        .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
+                        .foregroundStyle(PPColor.ink)
+                        .accessibilityLabel("Free scans remaining, \(chip)")
+                }
                 Text("This photo will be sent over HTTPS to an owner-hosted PandaPlate proxy for DeepSeek vision recognition, then USDA FoodData Central for a nutrient lookup from the food name (USDA does not get your photo). DeepSeek may process data under its own policy; processing or storage could involve China, and we cannot confirm retention or whether inputs are used for model training. Results are editable estimates. Don’t include people or personal details. You can cancel instead.")
                     .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .subheadline))
                     .foregroundStyle(PPColor.muted)
@@ -309,23 +329,26 @@ struct FoodScanSheet: View {
     // MARK: - Cheer (live Celebrate path)
 
     private var cheerPhrase: String {
-        let name = store.companionName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let pip = name.isEmpty ? "Pip" : name
-        return "\(pip) saw that — nice log."
+        PipCoachCopy.afterSoftSave(store: store)
     }
 
     private var celebrateOverlay: some View {
         VStack(spacing: 14) {
-            PipMascot(size: 140, assetName: "PP_PipCelebrate")
+            PipMascot(size: 120, assetName: reduceMotion ? "Pip" : "PP_PipCelebrate")
                 .scaleEffect(celebrateScale)
                 .opacity(celebrateOpacity)
-                .accessibilityLabel("Pip celebrates your log")
+                .accessibilityLabel("Pip nodded after your log")
             Text(cheerPhrase)
                 .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .headline))
                 .foregroundStyle(PPColor.ink)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
                 .opacity(celebrateOpacity)
+            if reduceMotion {
+                Text(PipCoachCopy.reduceMotionCaption(store: store))
+                    .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    .foregroundStyle(PPColor.muted)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(PPColor.cream.opacity(0.96).ignoresSafeArea())
@@ -369,7 +392,7 @@ struct FoodScanSheet: View {
             return
         }
         guard quota.canStartLiveScan(isPremium: premium.isPremium) else {
-            scanError = "You’ve reached today’s Free Food Scan limit (3/day). Premium removes the daily cap via App Store purchase. Manual logging stays available."
+            scanError = PipCoachCopy.freeTierEdge(remaining: 0, store: store)
             step = .camera
             return
         }
@@ -425,16 +448,17 @@ struct FoodScanSheet: View {
         if !portion.isEmpty { parts.append(portion) }
         let name = parts.joined(separator: " · ")
         let caloriesValue: Int? = editCalories.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : parsedCalories
-        store.addMeal(name: name, calories: caloriesValue, imageData: imageData)
+        store.addMeal(name: name, calories: caloriesValue, imageData: imageData, plateStory: plateStory)
 
         playCelebrateThenDismiss()
     }
 
     private func playCelebrateThenDismiss() {
+        // Soft settle — opacity + small settle, never confetti.
         showCelebrate = true
-        celebrateScale = reduceMotion ? 1 : 0.86
+        celebrateScale = reduceMotion ? 1 : 0.98
         celebrateOpacity = 0
-        let hold: Double = reduceMotion ? 0.85 : 1.15
+        let hold: Double = reduceMotion ? 0.7 : 0.95
         if reduceMotion {
             celebrateOpacity = 1
             celebrateScale = 1
@@ -443,18 +467,12 @@ struct FoodScanSheet: View {
                 await MainActor.run { dismiss() }
             }
         } else {
-            withAnimation(.easeOut(duration: 0.35)) {
+            withAnimation(.easeOut(duration: 0.28)) {
                 celebrateOpacity = 1
-                celebrateScale = 1.06
+                celebrateScale = 1
             }
             Task {
-                try? await Task.sleep(for: .milliseconds(380))
-                await MainActor.run {
-                    withAnimation(.easeInOut(duration: 0.35)) {
-                        celebrateScale = 1.0
-                    }
-                }
-                try? await Task.sleep(for: .seconds(hold - 0.38))
+                try? await Task.sleep(for: .seconds(hold))
                 await MainActor.run { dismiss() }
             }
         }
@@ -470,6 +488,7 @@ struct FoodScanSheet: View {
         showConsentOverlay = false
         resultCandidate = nil
         resultNotice = nil
+        plateStory = ""
         scanError = nil
         isScanning = false
         step = .camera
@@ -667,7 +686,7 @@ private struct ScanAnalyzingBeatView: View {
                 .font(.system(size: 18, weight: .bold, design: .rounded, relativeTo: .headline))
                 .foregroundStyle(PPColor.ink)
 
-            Text("Real estimate from the Server — nothing made up while we wait.")
+            Text("Soft progress — waiting on a real server estimate. Nothing invented on-device.")
                 .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .subheadline))
                 .foregroundStyle(PPColor.muted)
                 .multilineTextAlignment(.center)
@@ -691,6 +710,7 @@ private struct ScanResultCardView: View {
     @Binding var mealType: String
     let mealTypes: [String]
     @Binding var caloriesText: String
+    @Binding var plateStory: String
     let caloriesAreValid: Bool
     let hasServerNutrition: Bool
     let nutritionSource: String?
@@ -708,21 +728,23 @@ private struct ScanResultCardView: View {
         VStack(spacing: 0) {
             header
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: PPSpacing.large) {
+                    usdaHonestyBanner
                     mealHeader
                     if !fdcMatches.isEmpty {
                         fdcPinRow
                     }
                     mealMeta
                     calorieBlock
+                    plateStoryField
                     honestyNotes
-                    Text("Photo estimates can vary")
-                        .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
+                    Text("Photo estimates can vary — edit anything before saving. Unknown stays blank, never zero.")
+                        .font(PPType.caption2(11, weight: .medium))
                         .foregroundStyle(PPColor.muted)
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 4)
+                        .padding(.top, PPSpacing.xSmall)
                 }
-                .padding(18)
+                .padding(PPSpacing.pageInset)
             }
             saveBar
         }
@@ -819,12 +841,8 @@ private struct ScanResultCardView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(14)
-        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(PPColor.line.opacity(0.6), lineWidth: 1)
-        )
+        .padding(PPSpacing.large)
+        .ppWarmCardChrome(cornerRadius: 20, elevated: true)
     }
 
     private var mealMeta: some View {
@@ -889,6 +907,45 @@ private struct ScanResultCardView: View {
         .background(PPColor.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
+    private var plateStoryField: some View {
+        VStack(alignment: .leading, spacing: PPSpacing.small) {
+            Text("Plate Story")
+                .font(PPType.caption2(11, weight: .semibold))
+                .foregroundStyle(PPColor.muted)
+            TextField("Optional one-line note", text: $plateStory)
+                .font(PPType.callout(14, weight: .medium))
+                .foregroundStyle(PPColor.ink)
+                .padding(.horizontal, PPSpacing.medium)
+                .padding(.vertical, 10)
+                .background(PPColor.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(PPColor.accentCoral.opacity(0.35), lineWidth: 1)
+                )
+                .accessibilityLabel("Plate Story optional note")
+            Text("Optional one-line note for the Home plate stack. Not an award.")
+                .font(PPType.caption2(11, weight: .medium))
+                .foregroundStyle(PPColor.muted)
+        }
+    }
+
+    private var usdaHonestyBanner: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(hasServerNutrition ? "Editable estimate" : "Unknown until you edit")
+                .font(.system(size: 13, weight: .bold, design: .rounded, relativeTo: .caption))
+                .foregroundStyle(PPColor.ink)
+            Text(hasServerNutrition
+                 ? "Values came from the scan path when available (USDA match when listed). Change anything before you save — blank stays unknown, never zero."
+                 : "No nutrition numbers arrived from the server. Leave blank or type your own estimate — never invent a score or award.")
+                .font(.system(size: 12, weight: .medium, design: .rounded, relativeTo: .caption))
+                .foregroundStyle(PPColor.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(PPColor.sage.opacity(0.45), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
     @ViewBuilder
     private var honestyNotes: some View {
         if let nutritionSource, !nutritionSource.isEmpty {
@@ -909,23 +966,28 @@ private struct ScanResultCardView: View {
     }
 
     private var saveBar: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: PPSpacing.small) {
             Button(action: onSave) {
                 Text("Save to \(mealType.lowercased())")
-                    .font(.system(size: 16, weight: .bold, design: .rounded, relativeTo: .headline))
+                    .font(PPType.headline(16, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(canSave ? PPColor.coralInk : PPColor.muted.opacity(0.45), in: Capsule())
+                    .background(canSave ? PPColor.accentCoral : PPColor.muted.opacity(0.45), in: Capsule())
             }
             .buttonStyle(.plain)
             .disabled(!canSave)
+            .accessibilityLabel("Save plate")
 
             Button("Scan again", action: onScanAgain)
-                .font(.system(size: 13, weight: .semibold, design: .rounded, relativeTo: .caption))
-                .foregroundStyle(PPColor.coralInk)
+                .font(PPType.caption(13, weight: .semibold))
+                .foregroundStyle(PPColor.muted)
+                .frame(minHeight: 44)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.horizontal, PPSpacing.pageInset)
+        .padding(.vertical, PPSpacing.medium)
         .background(PPColor.cream.opacity(0.96))
+        .overlay(alignment: .top) {
+            Rectangle().fill(PPColor.line.opacity(0.7)).frame(height: 1)
+        }
     }
 }

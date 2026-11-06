@@ -9,8 +9,9 @@ final class PandaPlateFlowTests: XCTestCase {
         let launcher = app.buttons["Quick actions"]
         XCTAssertTrue(launcher.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Home"].exists)
-        XCTAssertTrue(app.buttons["Challenges"].exists)
-        XCTAssertTrue(app.buttons["Stats"].exists)
+        XCTAssertTrue(app.buttons["Pip"].exists)
+        XCTAssertTrue(app.buttons["Progress"].exists)
+        XCTAssertTrue(app.buttons["Profile"].exists)
         XCTAssertTrue(app.images["Pip in the forest garden"].waitForExistence(timeout: 5))
 
         let homeAttachment = XCTAttachment(screenshot: app.screenshot())
@@ -18,11 +19,11 @@ final class PandaPlateFlowTests: XCTestCase {
         homeAttachment.lifetime = .keepAlways
         add(homeAttachment)
 
-        app.buttons["Settings"].tap()
+        app.buttons["Profile"].tap()
         XCTAssertTrue(app.staticTexts["You"].waitForExistence(timeout: 5))
-        app.buttons["Close"].tap()
+        app.buttons["Home"].tap()
 
-        app.buttons["Challenges"].tap()
+        app.buttons["Pip"].tap()
         XCTAssertTrue(app.staticTexts["Save a meal note"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Take a water break"].exists)
         XCTAssertTrue(app.staticTexts["Move your way"].exists)
@@ -30,7 +31,7 @@ final class PandaPlateFlowTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Manual entry"].waitForExistence(timeout: 5))
         app.buttons["Lunch"].tap()
         app.buttons["Save"].tap()
-        XCTAssertTrue(app.buttons["Challenges"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Pip"].waitForExistence(timeout: 5))
 
         app.buttons["Home"].tap()
         app.buttons["Quick actions"].tap()
@@ -53,7 +54,7 @@ final class PandaPlateFlowTests: XCTestCase {
         app.buttons["End and save session log"].tap()
         XCTAssertTrue(app.buttons["Quick actions"].waitForExistence(timeout: 5))
 
-        app.buttons["Stats"].tap()
+        app.buttons["Progress"].tap()
         app.buttons["History"].tap()
         XCTAssertTrue(app.staticTexts.containing(
             NSPredicate(format: "label CONTAINS %@", "Meal · Lunch")

@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// In-app Terms of Use + Privacy Notice. Hosted Privacy Policy is live on GitHub Pages.
-/// There is no docs/terms.html yet — Terms remain in-app only (`termsOfUseBody`).
-/// ASC: paste privacyPolicyURL into App Privacy / App Information.
+/// In-app Terms of Use + Privacy Notice. Hosted Terms + Privacy are live on GitHub Pages.
+/// ASC: paste privacyPolicyURL / termsOfUseURL into App Privacy / App Information after live 200.
 enum PandaPlateLegal {
     static let supportEmail = "lisbon-oondn8@bot.cue.im"
     /// Hosted Privacy Policy (GitHub Pages HTTP 200 verified 2026-11-02).
     static let privacyPolicyURL: URL? = URL(string: "https://charlie-1111.github.io/PandaPlate-iOS/privacy.html")
+    /// Hosted Terms of Use (GitHub Pages HTTP 200 verified 2026-11-06).
+    static let termsOfUseURL: URL? = URL(string: "https://charlie-1111.github.io/PandaPlate-iOS/terms.html")
 
     enum Document: String, Identifiable {
         case termsOfUse
@@ -23,7 +24,7 @@ enum PandaPlateLegal {
     }
 
     static let termsOfUseBody: String = """
-    Last updated: 31 October 2026 (Asia/Hong_Kong)
+    Last updated: 6 November 2026 (Asia/Hong_Kong)
 
     Welcome to PandaPlate. These Terms of Use (“Terms”) explain how you may use this app. By tapping Get started or continuing past the welcome screen, you agree to these Terms and our Privacy Notice.
 
@@ -119,6 +120,17 @@ struct PandaPlateLegalDocumentSheet: View {
                         .foregroundStyle(PPColor.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
+                    if document == .termsOfUse, let url = PandaPlateLegal.termsOfUseURL {
+                        Link(destination: url) {
+                            Label("Open hosted Terms of Use", systemImage: "safari")
+                                .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .body))
+                                .foregroundStyle(PPColor.coralInk)
+                                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityHint("Opens the Terms of Use in Safari")
+                    }
+
                     if document == .privacyNotice, let url = PandaPlateLegal.privacyPolicyURL {
                         Link(destination: url) {
                             Label("Open hosted Privacy Policy", systemImage: "safari")
@@ -195,7 +207,9 @@ struct PandaPlateLegalLinksRow: View {
 
     private func legalButton(_ title: String, _ doc: PandaPlateLegal.Document) -> some View {
         Button {
-            if doc == .privacyNotice, let url = PandaPlateLegal.privacyPolicyURL {
+            if doc == .termsOfUse, let url = PandaPlateLegal.termsOfUseURL {
+                openURL(url)
+            } else if doc == .privacyNotice, let url = PandaPlateLegal.privacyPolicyURL {
                 openURL(url)
             } else {
                 presentedDocument = doc
@@ -215,7 +229,13 @@ struct PandaPlateLegalLinksRow: View {
         .contentShape(Rectangle())
         .zIndex(2)
         .accessibilityLabel(title)
-        .accessibilityHint(doc == .privacyNotice && PandaPlateLegal.privacyPolicyURL != nil ? "Opens hosted Privacy Policy in Safari" : "Opens \(title) in this app")
+        .accessibilityHint(
+            doc == .termsOfUse && PandaPlateLegal.termsOfUseURL != nil
+                ? "Opens hosted Terms of Use in Safari"
+                : doc == .privacyNotice && PandaPlateLegal.privacyPolicyURL != nil
+                    ? "Opens hosted Privacy Policy in Safari"
+                    : "Opens \(title) in this app"
+        )
         .accessibilityAddTraits(.isButton)
     }
 }

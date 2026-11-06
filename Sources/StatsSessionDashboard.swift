@@ -36,9 +36,9 @@ struct ProgressDashboard: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 17) {
-                Text("Stats")
-                    .font(.system(size: 27, weight: .black, design: .rounded, relativeTo: .largeTitle))
+            VStack(alignment: .leading, spacing: PPSpacing.large) {
+                Text("Progress")
+                    .font(PPType.largeTitle(28, weight: .bold))
                     .foregroundStyle(PPColor.ink)
                 sectionPicker
                 if selectedSection == .progress {
@@ -47,8 +47,9 @@ struct ProgressDashboard: View {
                     historyContent
                 }
             }
-            .padding(18)
-            .padding(.bottom, 18)
+            .padding(.horizontal, PPSpacing.pageInset)
+            .padding(.top, PPSpacing.tabContentTop)
+            .padding(.bottom, PPSpacing.xLarge)
         }
         .background(PPColor.cream)
     }
@@ -62,7 +63,7 @@ struct ProgressDashboard: View {
                         .font(.system(size: 12, weight: .bold, design: .rounded, relativeTo: .caption))
                         .foregroundStyle(isSelected ? .white : PPColor.ink)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(isSelected ? PPColor.forestDeep : PPColor.card, in: Capsule())
+                        .background(isSelected ? PPColor.accentCoral : PPColor.card, in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(section.rawValue)
@@ -80,7 +81,7 @@ struct ProgressDashboard: View {
         let latestWeight = store.weightLogs.max { $0.time < $1.time }
         let fastingSeconds = store.fastingEntries.reduce(0) { $0 + $1.durationSeconds }
 
-        return VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: PPSpacing.large) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Your session so far")
                     .font(.system(size: 22, weight: .black, design: .rounded, relativeTo: .title2))
@@ -98,11 +99,11 @@ struct ProgressDashboard: View {
 
             LazyVGrid(columns: gridColumns, spacing: 10) {
                 recapTile(
-                    title: "Meals",
+                    title: "Plates logged",
                     value: "\(store.meals.count)",
                     footnote: store.meals.isEmpty ? "None yet" : "\(mealsWithCalories) with estimate · \(mealsWithoutCalories) unknown",
                     symbol: "fork.knife",
-                    tint: PPColor.forest
+                    tint: PPColor.accentCoral
                 )
                 recapTile(
                     title: "Water",
@@ -180,25 +181,14 @@ struct ProgressDashboard: View {
     }
 
     private var statsEmptyState: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Nothing logged yet this session.")
-                .font(.system(size: 15, weight: .semibold, design: .rounded, relativeTo: .body))
-                .foregroundStyle(PPColor.ink)
-            Text("When you add a meal, water, or movement, a calm recap will show up here.")
-                .font(.system(size: 13, weight: .medium, design: .rounded, relativeTo: .caption))
-                .foregroundStyle(PPColor.muted)
-            Button(action: onOpenQuickLog) {
-                Label("Open quick log", systemImage: "plus.circle.fill")
-                    .font(.system(size: 15, weight: .bold, design: .rounded, relativeTo: .subheadline))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(PPColor.forestDeep, in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("stats-empty-open-quick-log")
-        }
-        .padding(16)
-        .background(PPColor.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        PPSoftEmptyCoach(
+            message: PipCoachCopy.emptyHome(store: store),
+            title: "Soft show-up",
+            ctaTitle: "Open quick log",
+            ctaSymbol: "plus.circle.fill",
+            action: onOpenQuickLog
+        )
+        .accessibilityIdentifier("stats-empty-open-quick-log")
     }
 
     private func recapTile(title: String, value: String, footnote: String, symbol: String, tint: Color) -> some View {
@@ -273,6 +263,16 @@ struct ProgressDashboard: View {
             Text("Session history · newest first · clears when the app closes")
                 .font(.system(size: 11, weight: .medium, design: .rounded, relativeTo: .caption2))
                 .foregroundStyle(PPColor.muted)
+
+            if !store.meals.isEmpty {
+                Text(PipCoachCopy.historyPlatesHeader(count: store.meals.count))
+                    .font(.system(size: 14, weight: .bold, design: .rounded, relativeTo: .subheadline))
+                    .foregroundStyle(PPColor.ink)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(store.meals.reversed()) { meal in
+                    PlateStoryCard(meal: meal)
+                }
+            }
 
             PPCard {
                 SoftShowUpPresenceCard(

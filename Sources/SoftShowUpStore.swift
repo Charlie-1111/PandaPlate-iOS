@@ -40,6 +40,31 @@ final class SoftShowUpStore: ObservableObject {
 
     var seenCount: Int { days.filter { $0.kind == .seen }.count }
 
+    /// Consecutive calendar days ending at the most recent “seen” day (today if logged; else yesterday).
+    /// Counts days the user logged anything (meal / water / movement via markSeen). Frozen breaks the run.
+    var showedUpDayCount: Int {
+        let keysNewestFirst = (0..<Self.historyCapDays).compactMap { offset -> String? in
+            guard let d = calendar.date(byAdding: .day, value: -offset, to: Date()) else { return nil }
+            return Self.dateKey(for: d, calendar: calendar)
+        }
+        guard let startOffset = keysNewestFirst.firstIndex(where: { key in
+            days.first(where: { $0.dateKey == key })?.kind == .seen
+        }) else { return 0 }
+
+        var count = 0
+        for key in keysNewestFirst[startOffset...] {
+            let kind = days.first(where: { $0.dateKey == key })?.kind
+            if kind == .seen {
+                count += 1
+            } else {
+                break
+            }
+        }
+        return count
+    }
+
+    var homeChipLine: String { SoftShowUpCopy.homeChip(showedUpDayCount) }
+
     var countHeadline: String {
         if seenCount == 0 { return SoftShowUpCopy.emptyDay0 }
         if isSeenToday { return SoftShowUpCopy.countOne }

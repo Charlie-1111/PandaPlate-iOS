@@ -45,6 +45,7 @@
 		7F2AA44A91504525D00583EB /* FastingLogDurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B7A33AB40C3D8019F03AB9 /* FastingLogDurationTests.swift */; };
 		82715660CCFD0520B3AA785B /* red_panda_welcome_animation.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 24B81C5530D64C3CA6927ED7 /* red_panda_welcome_animation.mp4 */; };
 		8F62FC7BB2C35A06AB76CA3C /* WeekLogExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38ADB639DB7B4EBA7D871B74 /* WeekLogExport.swift */; };
+		90C5EC3BE289E6504F326BC3 /* PipCoachCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87841A5F28815A00FCA2B1D0 /* PipCoachCopy.swift */; };
 		9136C21E379D49DC94A5DD71 /* LegalDocuments.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41B2AFA5736B4B7D5431B99 /* LegalDocuments.swift */; };
 		9595A620A3B0C40DA28E9C38 /* PandaPlatePlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1608E0EBD42A08EF8CCE538F /* PandaPlatePlanBuilder.swift */; };
 		9E4A9E63449CB7C1EE3BF744 /* ReminderNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBF9C3BC62B3F5A118ABDE76 /* ReminderNotifications.swift */; };
@@ -129,6 +130,7 @@
 		7B5FC12EA94097E1B01256FB /* PandaPlateStatusBarHidden.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateStatusBarHidden.swift; sourceTree = "<group>"; };
 		851CC051470132486A3B1B88 /* SessionMealRecentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionMealRecentsView.swift; sourceTree = "<group>"; };
 		85D4D7E32B3D98A22159C509 /* PandaPlateRevisionSafetyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateRevisionSafetyTests.swift; sourceTree = "<group>"; };
+		87841A5F28815A00FCA2B1D0 /* PipCoachCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipCoachCopy.swift; sourceTree = "<group>"; };
 		8786DA115243BAB032702A48 /* BMICategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BMICategory.swift; sourceTree = "<group>"; };
 		89BD5E13A576E192D36AD86A /* WorkoutFeatureModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFeatureModel.swift; sourceTree = "<group>"; };
 		8CB7407C08FE8C0697E811D0 /* PandaPlateChallengeProgress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PandaPlateChallengeProgress.swift; sourceTree = "<group>"; };
@@ -233,6 +235,7 @@
 				D989CE379F7BF893D02932FD /* PandaPlateSnapTimeSelector.swift */,
 				A7DF727AD7A7FBB06B641DA8 /* PandaPlateSnapValueSelector.swift */,
 				7B5FC12EA94097E1B01256FB /* PandaPlateStatusBarHidden.swift */,
+				87841A5F28815A00FCA2B1D0 /* PipCoachCopy.swift */,
 				54ABF12A25C3E63199DA9FEF /* PipFrameSequenceView.swift */,
 				2B46220EFD8C66EA9AD7A03F /* PipHeartsStore.swift */,
 				3FD991B27074200CE1140411 /* PipLifeLoopView.swift */,
@@ -424,6 +427,7 @@
 				59F8FA3DFA2AB6102189095D /* PandaPlateSnapTimeSelector.swift in Sources */,
 				1639BA92CF738A8597354D9C /* PandaPlateSnapValueSelector.swift in Sources */,
 				CA365D713B71C69D98C7F77B /* PandaPlateStatusBarHidden.swift in Sources */,
+				90C5EC3BE289E6504F326BC3 /* PipCoachCopy.swift in Sources */,
 				27645340B755D32AFDF63EDD /* PipFrameSequenceView.swift in Sources */,
 				29D874A9506FC76DF99D990C /* PipHeartsStore.swift in Sources */,
 				6622D860CF9D7DB5541A8A51 /* PipLifeLoopView.swift in Sources */,
@@ -598,6 +602,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PandaPlate;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PandaPlate lets you choose a meal photo from your library for Food Scan so you can log what you ate without taking a new picture.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -621,6 +626,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PandaPlate;
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PandaPlate lets you choose a meal photo from your library for Food Scan so you can log what you ate without taking a new picture.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
